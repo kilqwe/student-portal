@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global body styles */
+body {
+  margin: 0%;
+}
+html, #root {
+  @apply h-screen w-screen m-0 p-0 font-sans text-base text-gray-900;
+  background: url("../public/blueskyyy.png") no-repeat center center fixed;
+  background-size: cover;
+  background-color: #f0f4f8;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Headings in Roboto */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-roboto font-semibold;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.dashboard-header {
+  @apply fixed top-0 left-0 right-0 z-50
+         flex justify-between items-center
+         h-[72px]
+         px-6 py-3
+         bg-[#dbeafe] /* light but slightly darker blue */
+         text-[#1e3a8a] /* deep navy text */
+         border-b border-[#bfdbfe] /* mid blue border */
+         shadow-sm;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dashboard-header:hover,
+.dashboard-header:focus-within {
+  @apply bg-[#bfdbfe] shadow-md; /* darker blue on hover */
+}
+
+.dashboard-header img {
+  @apply w-10 h-10 mr-4 object-contain rounded-full;
+  transition: transform 0.3s ease;
+}
+
+.dashboard-header img:hover {
+  transform: scale(1.05);
+}
+
+.dashboard-header .college-name {
+  @apply block font-semibold text-lg;
+  color: #1e3a8a; /* strong navy */
+}
+
+.dashboard-header .dept-name {
+  @apply text-sm;
+  color: #2563eb; /* vivid blue */
+}
+
+.dashboard-header button {
+  @apply flex items-center gap-2
+         bg-white
+         text-[#1e40af]  /* deep blue */
+         px-4 py-2
+         rounded-md
+         border border-[#bfdbfe]
+         font-medium
+         transition-all duration-200
+         shadow-sm;
+}
+
+.dashboard-header button:hover {
+  @apply bg-[#eff6ff]
+         text-[#1e3a8a]
+         scale-105
+         shadow-md;
+}
+
+
+/* Spinner styles */
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Full screen height */
+}
+
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #f3f3f3; /* Light grey border */
+  border-top: 5px solid #3498db; /* Blue color for the moving part */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+/* The rotation animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
