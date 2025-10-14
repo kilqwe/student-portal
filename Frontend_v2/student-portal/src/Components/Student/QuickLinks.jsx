@@ -14,8 +14,9 @@ const QuickLinks = () => {
     <div className="w-full px-6 py-10">
       <div className="max-w-6xl mx-auto">
         {/* Heading */}
-        <h2 className="text-2xl font-bold mb-8 flex items-center gap-2 justify-center text-gray-800">
-          <img src='/link.png' className="w-6 h-6"/>Quick Links
+        <h2 className="text-2xl font-bold mb-8 text-center text-gray-800 flex items-center justify-center gap-3">
+          <img src="/link.png" alt="Links Icon" className="w-8 h-8" />
+            Quick Links
         </h2>
 
         {/* Use flexbox instead of grid */}

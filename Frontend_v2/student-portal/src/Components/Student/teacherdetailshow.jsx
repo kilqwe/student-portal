@@ -58,15 +58,16 @@ const StudentTeacherList = () => {
     }
 
     return (
-        // This new wrapper div applies the gray background to the whole area
         <div className="bg-gray-50 p-4 md:p-6 min-h-screen">
             <section className="space-y-8">
                 {/* --- Filter Section --- */}
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800 flex justify-center gap-2">
-                       <img src='/lecture.png' className="w-8 h-8"/> All Teachers</h2>
-                    <div className="flex flex-col md:flex-row md:items-center gap-4">
-                        <div className="relative flex-grow">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center flex items-center justify-center gap-3">
+                        <img src="/lecture.png" alt="Teachers Icon" className="w-8 h-8" />
+                        All Teachers
+                    </h2>
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative w-full md:w-1/2">
                             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
@@ -80,7 +81,7 @@ const StudentTeacherList = () => {
                             id="departmentFilter"
                             value={selectedDepartment || "All"}
                             onChange={(e) => setSelectedDepartment(e.target.value)}
-                            className="w-full md:w-1/3 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            className="w-full md:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="All">All Departments</option>
                             {Array.from(new Set(allTeachers.map((t) => t.department || "Unknown")))
@@ -110,17 +111,19 @@ const StudentTeacherList = () => {
                         return (
                             <div key={department} className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-semibold text-gray-700">{department} Department</h3>
-                                    {deptTeachers.length > teachersPerPage && (
-                                        <div className="flex items-center gap-3">
-                                            <button onClick={handlePrev} disabled={currentPage === 0} className="disabled:opacity-40 disabled:cursor-not-allowed">
-                                                <FaArrowCircleLeft size={24} className="text-gray-500 hover:text-blue-600 transition" />
-                                            </button>
-                                            <button onClick={handleNext} disabled={currentPage >= totalPages - 1} className="disabled:opacity-40 disabled:cursor-not-allowed">
-                                                <FaArrowCircleRight size={24} className="text-gray-500 hover:text-blue-600 transition" />
-                                            </button>
-                                        </div>
-                                    )}
+                                    <h3 className="flex-grow text-center text-xl font-semibold text-gray-700">{department} Department</h3>
+                                    <div className="w-20 flex justify-end items-center gap-3">
+                                        {deptTeachers.length > teachersPerPage && (
+                                            <>
+                                                <button onClick={handlePrev} disabled={currentPage === 0} className="disabled:opacity-40 disabled:cursor-not-allowed">
+                                                    <FaArrowCircleLeft size={24} className="text-gray-500 hover:text-blue-600 transition" />
+                                                </button>
+                                                <button onClick={handleNext} disabled={currentPage >= totalPages - 1} className="disabled:opacity-40 disabled:cursor-not-allowed">
+                                                    <FaArrowCircleRight size={24} className="text-gray-500 hover:text-blue-600 transition" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <AnimatePresence mode="wait">
@@ -133,7 +136,7 @@ const StudentTeacherList = () => {
                                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                                     >
                                         {paginatedTeachers.map((teacher) => (
-                                            <div key={teacher.id} className="bg-white rounded-lg shadow p-5 border border-gray-200 flex flex-col gap-3 transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-105">
+                                            <div key={teacher.id} className="bg-blue-50 rounded-lg shadow p-5 border border-gray-200 flex flex-col gap-3 transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-105">
                                                 <div>
                                                     <h4 className="text-lg font-bold text-gray-800">{teacher.name}</h4>
                                                     <p className="text-sm text-gray-500">{teacher.department || "Unknown"}</p>

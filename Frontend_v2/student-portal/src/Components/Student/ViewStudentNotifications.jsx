@@ -1,11 +1,28 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNotifications } from '../helpers/NotificationContext';
 import Pagination from '../helpers/Pagination';
-import { getDocs, query, collection, doc, deleteDoc, where } from 'firebase/firestore';
+import { getDocs, query, collection, where, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { FaInbox, FaTrash, FaEnvelopeOpen } from 'react-icons/fa';
-import { FiMoreVertical, FiX } from "react-icons/fi";
-import { motion, AnimatePresence } from 'framer-motion';
+
+// --- ICONS ---
+const CloseIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
+
+const MoreVerticalIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+    </svg>
+);
+
+const BellIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+    </svg>
+);
+
 
 const ViewStudentNotifications = () => {
     const { 
@@ -52,7 +69,7 @@ const ViewStudentNotifications = () => {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
+    
     const handleNotificationClick = (notification) => {
         setSelectedNotif(notification);
         setOpenMenuId(null);
@@ -69,19 +86,21 @@ const ViewStudentNotifications = () => {
     };
 
     const handleDelete = async (notificationId) => {
-        if (!window.confirm("Are you sure you want to delete this notification?")) return;
         try {
             const notificationDocRef = doc(db, "notifications", notificationId);
             await deleteDoc(notificationDocRef);
+
             setNotifications(prev => prev.filter(n => n.id !== notificationId));
+            
             if (selectedNotif && selectedNotif.id === notificationId) {
                 setSelectedNotif(null);
             }
+            setOpenMenuId(null);
+
         } catch (error) {
             console.error("Error deleting notification:", error);
             alert("There was an error deleting the notification. Please try again.");
         }
-        setOpenMenuId(null);
     };
 
     const totalPages = Math.ceil(notifications.length / NOTIFICATIONS_PER_PAGE);
@@ -90,7 +109,7 @@ const ViewStudentNotifications = () => {
 
     if (loading) {
         return (
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 flex justify-center items-center h-[calc(100vh-200px)]">
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 flex justify-center items-center">
                 <div className="spinner"></div>
             </div>
         );
@@ -99,12 +118,11 @@ const ViewStudentNotifications = () => {
     return (
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-3 justify-center">
-                {/* ✅ ICON REPLACED HERE */}
-                <img src="/envelope-dot.svg" alt="Notifications" className="w-6 h-6" />
+                <BellIcon />
                 <span>Notifications</span>
                 {unreadCount > 0 && (
                     <span className="bg-blue-600 text-white text-sm font-semibold px-2.5 py-0.5 rounded-full">
-                        {unreadCount}
+                        {`${unreadCount} new`}
                     </span>
                 )}
             </h2>
@@ -114,11 +132,7 @@ const ViewStudentNotifications = () => {
                 <div className={`flex flex-col transition-all duration-300 ease-in-out ${ selectedNotif ? 'w-full md:w-2/5' : 'w-full' }`}>
                     {notifications.length === 0 ? (
                         <div className="border border-gray-200 rounded-md h-full flex items-center justify-center">
-                            <div className="text-center">
-                                <FaInbox className="mx-auto text-4xl text-gray-300 mb-4" />
-                                <h3 className="text-lg font-semibold text-gray-700">All Caught Up!</h3>
-                                <p className="text-gray-500 mt-1">You have no new notifications.</p>
-                            </div>
+                            <p className="text-gray-600 italic text-center p-4">No notifications available.</p>
                         </div>
                     ) : (
                         <div className="h-full flex flex-col">
@@ -140,7 +154,7 @@ const ViewStudentNotifications = () => {
                                                 </div>
                                             </div>
                                             <div className="relative ml-auto pl-2">
-                                                <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === notif.id ? null : notif.id); }} className="p-1 rounded-full text-gray-500 hover:bg-gray-300 focus:outline-none" aria-label="Options"><FiMoreVertical /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === notif.id ? null : notif.id); }} className="p-1 rounded-full text-gray-500 hover:bg-gray-300 focus:outline-none" aria-label="Options"><MoreVerticalIcon /></button>
                                                 {openMenuId === notif.id && (
                                                     <div ref={menuRef} className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
                                                         <ul className="py-1 text-sm text-gray-700">
@@ -167,7 +181,7 @@ const ViewStudentNotifications = () => {
 
                 {selectedNotif && (
                     <div className="w-full md:w-3/5 border border-gray-300 rounded-md relative">
-                        <button onClick={() => setSelectedNotif(null)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 z-10" aria-label="Close"><FiX /></button>
+                        <button onClick={() => setSelectedNotif(null)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 z-10" aria-label="Close"><CloseIcon /></button>
                         <div className="p-5 h-full overflow-y-auto">
                             <h3 className="text-xl font-bold mb-2">{selectedNotif.title}</h3>
                             <div className="text-sm text-gray-600 mb-4 border-b pb-3">

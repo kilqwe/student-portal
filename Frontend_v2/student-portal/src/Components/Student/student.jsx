@@ -13,7 +13,7 @@ import QuickLinks from "./QuickLinks";
 import StudentAchievements from "./Achievements";
 import ProfileCard from "../helpers/ProfileCard";
 import Navbar from "../helpers/NavBar";
-import { FaCalendar, FaRegCalendarAlt } from "react-icons/fa";
+import { FaCalendarAlt } from "react-icons/fa";
 
 export default function StudentDashboard() {
   const [studentData, setStudentData] = useState(null);
@@ -164,7 +164,7 @@ export default function StudentDashboard() {
       {/* HEADER */}
       <header className="dashboard-header">
         <div className="flex items-center">
-           {/* --- HAMBURGER BUTTON --- */}
+            {/* --- HAMBURGER BUTTON --- */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 rounded-full hover:bg-gray-200/50 focus:outline-none focus:ring-2 focus:ring-gray-300 mr-4"
@@ -179,7 +179,7 @@ export default function StudentDashboard() {
             </div>
           </button>
           <img
-            src="/RV_logo.png"
+            src="/RV_logo.jpg"
             alt="Logo"
             className="w-10 h-10 mr-4 rounded-full object-cover"
           />
@@ -243,26 +243,22 @@ export default function StudentDashboard() {
           {activeSection === "cgpa" && <CgpaSection studentId={studentData.id} />}
           
           {activeSection === "calendar" && coeFileUrl && (
-  <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-    <h2 className="text-2xl font-bold mb-4 gap-2 flex items-center justify-center">
-      <FaRegCalendarAlt />
-      <span>Calendar of Events</span>
-    </h2>
-    
-    {/* ✅ FIX: Added 'flex' and 'justify-center' to this container */}
-    <div className="overflow-x-auto flex justify-center">
-      
-      {/* This inner div is a common trick to "zoom out" of an iframe */}
-      <div className="transform scale-[0.85] origin-top w-[118%] h-[800px]">
-        <iframe
-          src={coeFileUrl}
-          title="Calendar of Events"
-          className="w-full h-full rounded-md border border-gray-200"
-        />
-      </div>
-    </div>
-  </div>
-)}
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-3 justify-center">
+                <FaCalendarAlt />
+                Calendar of Events
+              </h2>
+              <div className="overflow-x-auto">
+                <div className="transform scale-[0.85] origin-top w-[118%] h-[800px]">
+                  <iframe
+                    src={coeFileUrl}
+                    title="Calendar of Events"
+                    className="w-full h-full rounded-md border border-gray-200"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeSection === "fees" && <QuickLinks />}
 
@@ -294,4 +290,4 @@ export default function StudentDashboard() {
       </div>
     </div>
   );
-} 
+}

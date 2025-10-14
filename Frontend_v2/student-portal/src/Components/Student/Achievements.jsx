@@ -134,7 +134,6 @@ export default function StudentAchievements() {
   };
 
   if (isInitialLoading) {
-    // A smaller spinner is better for embedding within a dashboard
     return (
       <div className="flex justify-center items-center p-8">
         <div className="spinner"></div>
@@ -142,12 +141,11 @@ export default function StudentAchievements() {
     );
   }
 
-  // The outer gray background div has been removed. The component now returns the white card directly.
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md border border-gray-200">
       {/* Form Section */}
       <div className="mb-8">
-        <h3 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2 justify-center">
+        <h3 className="text-xl font-semibold text-gray-800 mb-3 flex items-center justify-center gap-2">
           <FaTrophy />
           <span>Add a New Achievement</span>
         </h3>
@@ -185,9 +183,9 @@ export default function StudentAchievements() {
 
       {/* List Section */}
       <div>
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">
             Your Saved Achievements
-          </h3>
+        </h3>
         {achievements.length === 0 ? (
           <div className="text-gray-500 italic bg-gray-50 p-4 rounded-md border border-gray-200">
             No achievements added yet.

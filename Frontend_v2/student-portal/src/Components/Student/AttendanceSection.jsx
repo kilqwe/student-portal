@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../../firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { FaClipboardCheck } from "react-icons/fa";
 
 // Helper function for all attendance logic (no changes needed here)
 const calculateAttendanceMetrics = (attended, total, minPercent = 75) => {
@@ -121,14 +120,15 @@ const AttendanceSection = ({ studentId, semester }) => {
   return (
     // --- THIS LINE IS UPDATED TO CREATE THE WHITE CONTAINER ---
     <section className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-      <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 justify-center"><FaClipboardCheck/> Attendance Summary</h2>
+      <h2 className="text-2xl font-bold mb-4 flex items-center justify-center gap-3"> 
+        <img src="/attendance.png" alt="Attendance Icon" className="w-8 h-8"/>Attendance Summary</h2>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
       {attendanceSummary.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-100">
+            <thead className="bg-blue-50">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Subject</th>
                 <th className="px-4 py-3 text-center font-semibold text-gray-600">Attendance</th>

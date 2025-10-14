@@ -6,7 +6,7 @@ import autoTable from "jspdf-autotable";
 import { FiDownload } from "react-icons/fi";
 
 const InfoChip = ({ label, value }) => (
-  <div className="bg-slate-100 p-3 rounded-lg text-center">
+  <div className="bg-blue-50 p-3 rounded-lg text-center">
     <p className="text-sm font-medium text-gray-500">{label}</p>
     <p className="text-2xl font-bold text-gray-800">{value}</p>
   </div>
@@ -104,13 +104,11 @@ export default function CgpaSection({ studentId }) {
   const downloadPdfReport = () => {
     const doc = new jsPDF();
     
-    // Add header
     doc.setFontSize(18);
     doc.text("Academic Performance Report", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
 
-    // Add student details
     if(studentData){
       doc.text(`Name: ${studentData.name}`, 14, 32);
       doc.text(`USN: ${studentId}`, 14, 38);
@@ -140,7 +138,6 @@ export default function CgpaSection({ studentId }) {
       headStyles: { fillColor: [22, 160, 133] }
     });
     
-    // Add SGPA footer
     const finalY = doc.lastAutoTable.finalY;
     doc.setFontSize(12);
     doc.text(`Semester ${selectedSemester} SGPA: ${sgpa}`, 14, finalY + 10);
@@ -168,30 +165,22 @@ export default function CgpaSection({ studentId }) {
   if (error) return <div className="p-6 text-red-600 text-center">{error}</div>;
 
   return (
-    // --- THIS LINE HAS BEEN UPDATED ---
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-4">
-  {/* Image Tag for your Icon */}
-  <img 
-    src="/academic.png" 
-    alt="Academic Performance" 
-    className="w-10 h-10" 
-  />
-  
-  {/* Text Content */}
-  <div>
-    <h2 className="text-2xl font-bold text-gray-800">Academic Performance</h2>
-    <p className="text-sm text-gray-500">View and download your semester-wise grade report.</p>
-  </div>
-</div>
+            <img src="/program.png" alt="Performance Icon" className="w-12 h-12" />
+            <div>
+                <h2 className="text-2xl font-bold text-gray-800">Academic Performance</h2>
+                <p className="text-sm text-gray-500">View and download your semester-wise grade report.</p>
+            </div>
+        </div>
         <div className="flex gap-4">
           <InfoChip label="Overall CGPA" value={cgpa} />
           <InfoChip label={`Semester ${selectedSemester} SGPA`} value={sgpa} />
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+      <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 p-4 bg-blue-50 rounded-lg">
         <label htmlFor="semester" className="font-medium text-gray-700">Select Semester:</label>
         <select
           id="semester"
@@ -216,7 +205,7 @@ export default function CgpaSection({ studentId }) {
 
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
         <table className="w-full text-sm text-left">
-          <thead className="bg-gray-100 text-gray-600 uppercase tracking-wider">
+          <thead className="bg-blue-50 text-gray-600 uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3 font-semibold">Subject</th>
               {hasCIE1 && <th className="px-4 py-3 font-semibold text-center">CIE1</th>}
