@@ -1,12 +1,12 @@
 import React from "react";
- // ⬅️ place your RVITM logo in src/assets/logo.png
+
 
 const LoadingScreen = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
       {/* College Logo */}
       <img
-        src="/RV_logo.png"
+        src="/RV_logo.jpg"
         alt="RVITM Logo"
         className="w-20 h-20 mb-4"
       />
@@ -21,7 +21,7 @@ const LoadingScreen = () => {
 
       {/* Message */}
       <p className="mt-4 text-gray-600 text-base">
-        Loading...
+        Please wait, loading login page...
       </p>
     </div>
   );
