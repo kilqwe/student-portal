@@ -127,7 +127,7 @@ const AddSubject = () => {
     <div className="max-w-5xl mx-auto my-8 px-4 flex flex-wrap gap-6">
       {/* Add Subject Section */}
       <div className="flex-1 min-w-[300px] border border-gray-300 rounded-lg p-6 bg-white shadow">
-        <h2 className="text-xl font-semibold mb-4"> Add Subject</h2>
+        <h2 className="text-xl font-semibold mb-4 flex items-center justify-center"> Add Subject</h2>
         <form onSubmit={handleAddSubject} className="space-y-4">
           <div>
             <label className="block font-medium mb-1">Subject ID</label>
@@ -164,7 +164,7 @@ const AddSubject = () => {
             type="submit"
             disabled={loading}
             className={`w-full py-2 px-4 rounded text-white ${
-              loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+              loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
             {loading ? "Processing..." : "Add Subject"}
@@ -174,7 +174,7 @@ const AddSubject = () => {
 
       {/* Delete Subject Section */}
       <div className="flex-1 min-w-[300px] border border-gray-300 rounded-lg p-6 bg-white shadow">
-        <h2 className="text-xl font-semibold mb-4"> Delete Subject</h2>
+        <h2 className="text-xl font-semibold mb-4 flex items-center justify-center"> Delete Subject</h2>
 
         <div className="mb-4">
           <label className="block font-medium mb-1">Select Subject to Delete</label>
