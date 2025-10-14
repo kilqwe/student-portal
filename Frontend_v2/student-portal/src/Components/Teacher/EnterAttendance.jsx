@@ -157,7 +157,7 @@ export default function EnterAttendance() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3"><FaCalendarCheck /> Enter Attendance</h2>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center"><FaCalendarCheck /> Enter Attendance</h2>
 
       {/* --- Step 1: Select Subject --- */}
       <div className="mb-6">

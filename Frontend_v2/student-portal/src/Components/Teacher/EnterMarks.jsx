@@ -314,7 +314,7 @@ export default function EnterMarks() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3"><FaEdit /> Enter CIE Marks</h2>
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center"><FaEdit /> Enter CIE Marks</h2>
 
         {/* --- Step 1: Select Subject --- */}
         <div className="mb-6">

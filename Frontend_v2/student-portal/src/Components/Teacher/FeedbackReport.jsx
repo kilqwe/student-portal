@@ -157,9 +157,9 @@ const FeedbackReport = () => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3"><FaChartBar /> Feedback Report</h2>
-            <p className="text-gray-500 text-sm mt-1">Summary of student feedback for your assigned subjects.</p>
+        <div className="w-full text-center md:text-left">
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3 justify-center "><FaChartBar /> Feedback Report</h2>
+            <p className="text-gray-500 text-sm mt-1 flex items-center gap-3 justify-center">Summary of student feedback for your assigned subjects.</p>
         </div>
         {report && (
             <button
@@ -202,7 +202,7 @@ const FeedbackReport = () => {
                     transition={{ duration: 0.5 }}
                     className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
                 >
-                    <div className="mb-4">
+                    <div className="mb-4 text-center"> {/*center align*/}
                         <h3 className="text-lg font-bold text-blue-800">{subjectName} ({subjectCode})</h3>
                         <p className="text-sm text-gray-500">Semester: {semester}, Section: {section}</p>
                     </div>

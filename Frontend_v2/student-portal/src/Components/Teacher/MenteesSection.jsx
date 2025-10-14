@@ -225,8 +225,8 @@ export default function MenteesSection({ mentees }) {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+        <div className="flex flex-col items-center mb-6 gap-4">
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3 justify-center">
                 <FaUsers /> My Mentees ({mentees.length})
             </h2>
             <div className="relative w-full md:w-auto">

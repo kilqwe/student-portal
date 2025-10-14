@@ -171,7 +171,7 @@ export default function TeacherDashboard() {
                     <span className={`absolute block h-0.5 w-full bg-gray-700 rounded-full transition-all duration-300 ease-in-out ${ isSidebarOpen ? '-rotate-45 top-1/2 -translate-y-1/2' : 'bottom-1' }`}></span>
                 </div>
             </button>
-            <img src="/RV_logo.png" alt="Logo" className="w-10 h-10 mr-3 object-contain" />
+            <img src="/RV_logo.jpg" alt="Logo" className="w-10 h-10 mr-3 object-contain" />
             <div>
                 <span className="block font-semibold leading-tight">RV Institute of Technology and Management</span>
                 <p className="text-sm">Department of {teacherData?.department || '...'}</p>

@@ -86,7 +86,7 @@ export default function AssignedSubjects({ employeeId }) {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center">
         <FaBookOpen /> My Assigned Subjects
       </h2>
 
