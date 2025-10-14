@@ -95,7 +95,7 @@ function Login() {
       {/* Left side image */}
       <div className="hidden lg:flex w-1/2 relative">
         <img
-          src="/clg.png"
+          src="/clg3.jpeg"
           alt="RV Institute"
           className="object-fill w-full h-full brightness-95 contrast-105"
         />
@@ -108,10 +108,10 @@ function Login() {
           <div className="p-6 text-gray-900">
             {/* Header */}
             <div className="text-center mb-4">
-              <img src="/RV_logo.png" alt="RV Logo" className="mx-auto w-16 h-16 mb-2" />
+              <img src="/RV_logo.jpg" alt="RV Logo" className="mx-auto w-16 h-16 mb-2" />
               <h1 className="text-lg font-bold">
                 R.V. Institute of Technology and Management
-              </h1>
+              </h1> 
               <p className="text-xs text-gray-600">
                 Affiliated to Visvesvaraya Technological University
               </p>

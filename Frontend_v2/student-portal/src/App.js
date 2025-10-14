@@ -7,8 +7,10 @@ import StudentDashboard from "./Components/Student/student";
 import TeacherDashboard from "./Components/Teacher/teacher";
 import AdminDashboard from "./Components/Admin/admin";
 import AuthWrapper from "./AuthWrapper";
-import ScrollToTop from "./Components/helpers/ScrollToTop"; // Import the ScrollToTop component
+import ScrollToTop from "./Components/helpers/ScrollToTop"; 
+import "./index.css"; 
 import { NotificationProvider } from "./Components/helpers/NotificationContext";
+
 function App() {
   return (
     <NotificationProvider>
@@ -23,6 +25,7 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </AuthWrapper>
+    
 
       {/* --- THIS IS THE TOASTER FOR THE GLASSMORPHISM EFFECT --- */}
       <Toaster
