@@ -159,7 +159,7 @@ export default function ManageAdmins() {
             {activeTab === 'viewTeachers' && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">Current Teachers</h2>
+                        <h2 className="text-2xl font-bold text-gray-800 flex-grow text-center">Current Teachers</h2>
                         <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="w-full md:w-auto p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
                             {departments.map((dept) => (<option key={dept} value={dept}>{dept === 'All' ? 'All Departments' : dept}</option>))}
                         </select>
@@ -193,7 +193,7 @@ export default function ManageAdmins() {
             {/* Add Teacher Tab */}
             {activeTab === 'addTeacher' && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 max-w-2xl mx-auto">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Add New Teacher</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center justify-center">Add New Teacher</h2>
                     <form onSubmit={handleAddTeacher} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <input name="name" placeholder="Name" required className="p-2 border rounded-md" />
                         <input name="employeeId" placeholder="Employee ID" required className="p-2 border rounded-md" />
@@ -217,7 +217,7 @@ export default function ManageAdmins() {
             {/* View Admins Tab */}
             {activeTab === 'viewAdmins' && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Current Admins</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center justify-center">Current Admins</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left text-gray-700">
                             <thead className="text-xs text-white uppercase bg-blue-600">
@@ -245,7 +245,7 @@ export default function ManageAdmins() {
             {/* Add Admin Tab */}
             {activeTab === 'addAdmin' && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 max-w-2xl mx-auto">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Add New Admin</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center justify-center">Add New Admin</h2>
                     <form onSubmit={handleAddAdmin} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <input name="name" placeholder="Name" required className="p-2 border rounded-md" />
                         <input name="employeeId" placeholder="Employee ID" required className="p-2 border rounded-md" />

@@ -3,7 +3,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 import Navbar from "../helpers/NavBar";
 import {
-  FaSearch, FaArrowCircleLeft, FaArrowCircleRight, FaEnvelope, FaPhone, FaIdBadge, FaDownload,
+  FaSearch, FaArrowCircleLeft, FaArrowCircleRight, FaEnvelope, FaPhone, FaIdBadge, FaDownload, FaUsers, // ✅ Icon Imported
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Mentor from "./mentor";
@@ -50,6 +50,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (mainContentRef.current) mainContentRef.current.scrollTo(0, 0);
   }, [activeSection, teacherSearchQuery, selectedDepartment]);
+
+  // Reset student page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [studentSearchQuery, selectedSemester, selectedSection]);
+
+  // Reset teacher department pages when filters change
+  useEffect(() => {
+    setDepartmentPages({});
+  }, [teacherSearchQuery, selectedDepartment]);
+
 
   // Fetch admin data
   useEffect(() => {
@@ -116,17 +127,6 @@ export default function AdminDashboard() {
     fetchTeachers();
   }, []);
 
-  // Reset student page to 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [studentSearchQuery, selectedSemester, selectedSection]);
-
-  // Reset teacher department pages when filters change
-  useEffect(() => {
-    setDepartmentPages({});
-  }, [teacherSearchQuery, selectedDepartment]);
-
-
   const filteredStudents = students.filter((student) => {
     const matchesSearch = studentSearchQuery
       ? student.name?.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
     return <h2 style={{ textAlign: "center", marginTop: "4rem" }}>{error}</h2>;
 
   const adminNameForAvatar = adminData?.name
-    ? adminData.name.trim().replace(/^(Dr|Mr|Mrs|Ms)\.?\s*/i, "")
+    ? adminData.name.trim().replace(/^(Dr|Mrs|Mr|Ms)\.?\s*/i, "")
     : "";
 
   return (
@@ -224,7 +224,7 @@ export default function AdminDashboard() {
   </div>
 </button>
 
-          <img src="/RV_logo.png" alt="Logo" className="w-10 h-10 mr-3 object-contain" />
+          <img src="/RV_logo.jpg" alt="Logo" className="w-10 h-10 mr-3 object-contain" />
           <div>
             <span className="block font-semibold leading-tight">
               RV Institute of Technology and Management
@@ -297,7 +297,11 @@ export default function AdminDashboard() {
           {/* --- All Students Section --- */}
           {activeSection === "allStudents" && (
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-              <h2 className="text-2xl font-bold mb-6 text-gray-800">All Students</h2>
+              {/* ✅ HEADING UPDATED WITH ICON */}
+              <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center">
+                <FaUsers />
+                All Students
+              </h2>
               
               {/* Controls */}
               <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -348,19 +352,19 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                         {currentStudents.map((student) => (
-                          <tr key={student.id} className="bg-white border-b hover:bg-gray-50">
-                              <td className="px-6 py-4 font-medium">{student.name}</td>
-                              <td className="px-6 py-4">{student.id}</td>
-                              <td className="px-6 py-4">
-                                <div>{student.email}</div>
-                                <div className="text-gray-500">{student.phone}</div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div>{student.parentEmail || "N/A"}</div>
-                                <div className="text-gray-500">{student.parentNo || "N/A"}</div>
-                              </td>
-                              <td className="px-6 py-4">{student.semester} {student.section}</td>
-                          </tr>
+                            <tr key={student.id} className="bg-white border-b hover:bg-gray-50">
+                                <td className="px-6 py-4 font-medium">{student.name}</td>
+                                <td className="px-6 py-4">{student.id}</td>
+                                <td className="px-6 py-4">
+                                  <div>{student.email}</div>
+                                  <div className="text-gray-500">{student.phone}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div>{student.parentEmail || "N/A"}</div>
+                                  <div className="text-gray-500">{student.parentNo || "N/A"}</div>
+                                </td>
+                                <td className="px-6 py-4">{student.semester} {student.section}</td>
+                            </tr>
                         ))}
                         {currentStudents.length === 0 && (
                           <tr>
@@ -407,7 +411,7 @@ export default function AdminDashboard() {
           {activeSection === "allTeachers" && (
             <section className="space-y-8">
               <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800">All Teachers</h2>
+                <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center justify-center">All Teachers</h2>
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
                   <div className="relative flex-grow">
                       <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -472,7 +476,7 @@ export default function AdminDashboard() {
                 return (
                   <div key={department} className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-semibold text-gray-700">{department} Department</h3>
+                      <h3 className="text-xl font-semibold text-gray-700 flex-grow text-center">{department} Department</h3>
                       {deptTeachers.length > teachersPerPage && (
                         <div className="flex items-center gap-3">
                           <button onClick={handlePrev} disabled={currentPage === 0} className="disabled:opacity-40 disabled:cursor-not-allowed">
@@ -495,7 +499,7 @@ export default function AdminDashboard() {
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                       >
                         {paginatedTeachers.map((teacher) => (
-                          <div key={teacher.id} className="bg-white rounded-lg shadow p-5 border border-gray-200 flex flex-col gap-3 transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-105">
+                          <div key={teacher.id} className="bg-blue-50 rounded-lg shadow p-5 border border-gray-200 flex flex-col gap-3 transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-105">
                             <div>
                               <h4 className="text-lg font-bold text-gray-800">{teacher.name}</h4>
                               <p className="text-sm text-gray-500">{teacher.department || "Unknown"}</p>
@@ -509,7 +513,7 @@ export default function AdminDashboard() {
                                 <FaIdBadge /><span>ID: {teacher.id}</span>
                               </div>
                             </div>
-                          </div>
+                          </div>  
                         ))}
                       </motion.div>
                     </AnimatePresence>

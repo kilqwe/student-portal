@@ -238,7 +238,7 @@ export default function Mentor() {
         <section className="space-y-8">
             {/* --- ASSIGN MENTOR CARD --- */}
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3"><FaUserPlus /> Assign Mentor to Students</h2>
+                <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center"><FaUserPlus /> Assign Mentor to Students</h2>
                 
                 {error && <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-lg text-center">{error}</div>}
                 {successMessage && <div className="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-center">{successMessage}</div>}
@@ -317,7 +317,7 @@ export default function Mentor() {
 
             {/* --- CURRENT ASSIGNMENTS CARD --- */}
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h3 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3"><FaUsers /> Current Mentor Assignments</h3>
+                <h3 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center"><FaUsers /> Current Mentor Assignments</h3>
                 
                 {/* Filters for the table */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

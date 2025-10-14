@@ -173,10 +173,10 @@ const UploadStudents = () => {
             {/* --- UPLOAD TAB --- */}
             {activeTab === 'upload' && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Upload Students via Excel</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800  flex items-center gap-3 justify-center">Upload Students via Excel</h2>
                     <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 mb-6 rounded-r-lg text-sm">
                         <div className="flex items-start"><FaInfoCircle className="h-5 w-5 mr-3 mt-1 flex-shrink-0" />
-                            <div><p className="font-bold">Instructions:</p>
+                            <div><p className="font-bold ">Instructions:</p>
                                 <p>Upload an `.xlsx` or `.xls` file with columns for: `Document ID` (USN), `email`, `name`, `semester`, `section`, etc.</p>
                                 <p>The system will create new students or update existing ones based on the `Document ID`.</p>
                             </div>
@@ -194,7 +194,7 @@ const UploadStudents = () => {
             {/* --- UPDATE TAB --- */}
             {activeTab === 'update' && (
                  <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Update Student Semesters</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800  flex items-center gap-3 justify-center">Update Student Semesters</h2>
                     <div className="flex flex-col md:flex-row gap-4 mb-6 items-center bg-gray-50 p-4 rounded-lg">
                         <select value={updateSelectedSem} onChange={(e) => setUpdateSelectedSem(e.target.value)} className="w-full md:w-auto p-2 border border-gray-300 rounded-md">
                             <option value="">Filter by Semester</option>
@@ -237,7 +237,7 @@ const UploadStudents = () => {
             {/* --- DELETE TAB --- */}
 {activeTab === 'delete' && (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-2xl font-bold mb-6 text-red-700">Delete Students</h2>
+        <h2 className="text-2xl font-bold mb-6 text-red-700  flex items-center gap-3 justify-center">Delete Students</h2>
         <div className="flex flex-col md:flex-row gap-4 mb-6 items-center bg-red-50 p-4 rounded-lg">
             <select value={deleteSelectedSem} onChange={(e) => setDeleteSelectedSem(e.target.value)} className="w-full md:w-auto p-2 border-gray-300 rounded-md">
                 <option value="">Filter by Semester</option>

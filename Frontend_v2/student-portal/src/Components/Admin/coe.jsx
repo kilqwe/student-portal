@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { doc, setDoc } from 'firebase/firestore';
-import { FaCalendarAlt, FaLink, FaInfoCircle } from 'react-icons/fa';
+import { FaRegCalendarAlt, FaLink, FaInfoCircle } from 'react-icons/fa';
 
 // A reusable component for displaying styled messages
 const StatusMessage = ({ message, type }) => {
@@ -90,10 +90,10 @@ const CoE = () => {
   return (
     <div className="max-w-4xl mx-auto">
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-            <h2 className="text-2xl font-bold mb-2 text-gray-800 flex items-center gap-3">
-                <FaCalendarAlt /> Upload Calendar of Events (CoE)
+            <h2 className="text-2xl font-bold mb-2 text-gray-800 flex items-center gap-3 justify-center">
+                <FaRegCalendarAlt /> Upload Calendar of Events (CoE)
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-gray-500 mb-6 flex items-center justify-center">
                 Upload a Google Drive link for the Calendar of Events for a specific semester.
             </p>
 

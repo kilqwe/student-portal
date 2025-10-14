@@ -145,10 +145,10 @@ export default function UpdateSeeMarks() {
   return (
     <div className="max-w-4xl mx-auto">
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-            <h2 className="text-2xl font-bold mb-2 text-gray-800 flex items-center gap-3">
+            <h2 className="text-2xl font-bold mb-2 text-gray-800 flex items-center gap-3 justify-center">
                 <FaFileUpload /> Upload SEE Marks
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-gray-500 mb-6 flex items-center justify-center">
                 Upload an Excel file to bulk-update the SEE (Semester End Examination) marks for students.
             </p>
 
