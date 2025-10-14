@@ -157,6 +157,8 @@ firebase deploy
 ### 👩‍💻 Authors
 - Neha Dinesh Rangdal – neharangdal.04@gmail.com
 - Pravardhan Prasad – pravardhan35@gmail.com
+- Anukriti Sharma - anukriti2306@gmail.com
+- R Shreyas - shreyas0514@gmail.com
 ### 📌 Status
 - ⏳ Currently in deployment phase. The repository is private due to sensitive data and API keys. Access may be granted on request.
 
