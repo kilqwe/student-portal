@@ -1,5 +1,5 @@
 
-## ⚠️ Note: The Project repository is currently private due to privacy and security considerations, as the system is still under deployment with sensitive student/faculty data. Access can be granted on request.
+
 ### 📚 Academic Portal
 ### 🔑 Overview
 The Academic Portal is a full-stack, role-based academic management system built on Firebase, Node.js, and React, designed to streamline communication, student management, and reporting for educational institutions. It integrates real-time Firestore database operations, role-specific dashboards, bulk imports/exports, and cloud-based APIs to ensure scalability and efficiency.
