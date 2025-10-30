@@ -37,7 +37,7 @@ const sendEmailsForNewNotifications = async () => {
       for (const email of data.recipients) {
         const msg = {
           to: email,
-          from: "neharangdal.04@gmail.com", // Must be verified in SendGrid
+          from: "yourmail@mail.com", // Must be verified in SendGrid
           subject: data.title || "New Notification",
           html: `
             <h3>${data.title || "Notification"}</h3>
@@ -92,7 +92,7 @@ app.post("/api/forgot-password", async (req, res) => {
 
     const msg = {
       to: email,
-      from: "neharangdal.04@gmail.com", // Must be verified in SendGrid
+      from: "yourmail@mail.com", // Must be verified in SendGrid
       subject: "Reset your password",
       html: `
         <p>You requested a password reset.</p>
