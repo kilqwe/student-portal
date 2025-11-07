@@ -312,6 +312,104 @@ export default function EnterMarks() {
   const startIndex = (currentPage - 1) * studentsPerPage;
   const currentStudents = filteredStudents.slice(startIndex, startIndex + studentsPerPage);
 
+  // --- START: Arrow Key Navigation Logic (Student Table) ---
+  const visibleFields = [
+    "CIE1", "CIE2", "CIE3", "labMarks", "assignmentMarks"
+  ].filter(field => fieldApplicability[field]);
+
+  const handleKeyDown = (e, studentIndex, currentField) => {
+    const { key } = e;
+    if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) {
+      return;
+    }
+
+    e.preventDefault(); 
+
+    const currentFieldIndex = visibleFields.indexOf(currentField);
+    let nextStudentIndex = studentIndex;
+    let nextFieldIndex = currentFieldIndex;
+
+    switch (key) {
+      case "ArrowUp":
+        if (studentIndex > 0) nextStudentIndex = studentIndex - 1;
+        break;
+      case "ArrowDown":
+        if (studentIndex < currentStudents.length - 1) nextStudentIndex = studentIndex + 1;
+        break;
+      case "ArrowLeft":
+        if (currentFieldIndex > 0) nextFieldIndex = currentFieldIndex - 1;
+        break;
+      case "ArrowRight":
+        if (currentFieldIndex < visibleFields.length - 1) nextFieldIndex = currentFieldIndex + 1;
+        break;
+      default:
+        return;
+    }
+
+    const nextField = visibleFields[nextFieldIndex];
+    const nextStudentId = currentStudents[nextStudentIndex].id;
+
+    if (nextField && nextStudentId) {
+      const nextInputId = `input-${nextStudentId}-${nextField}`;
+      const nextInput = document.getElementById(nextInputId);
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    }
+  };
+  // --- END: Arrow Key Navigation Logic (Student Table) ---
+
+  // --- START: NEW Arrow Key Navigation Logic (Max Marks) ---
+  const handleMaxMarksKeyDown = (e, currentField) => {
+    const { key } = e;
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) {
+      return;
+    }
+
+    // Stop default behavior (like value changing on up/down)
+    e.preventDefault();
+
+    // We only care about left/right navigation for this row
+    if (key === "ArrowUp" || key === "ArrowDown") {
+      return;
+    }
+
+    // Define the order of fields in the "Max Marks" section
+    const visibleMaxMarksFields = [
+      "CIE1", "CIE2", "CIE3", "assignmentMarks", "labMarks"
+    ].filter(field => fieldApplicability[field]);
+    visibleMaxMarksFields.push("reducedMax"); // "Reduced CIE" is always last in this row
+
+    const currentFieldIndex = visibleMaxMarksFields.indexOf(currentField);
+    let nextFieldIndex = currentFieldIndex;
+
+    switch (key) {
+      case "ArrowLeft":
+        if (currentFieldIndex > 0) nextFieldIndex = currentFieldIndex - 1;
+        break;
+      case "ArrowRight":
+        if (currentFieldIndex < visibleMaxMarksFields.length - 1) nextFieldIndex = currentFieldIndex + 1;
+        break;
+      default:
+        return;
+    }
+
+    if (nextFieldIndex === currentFieldIndex) return; // No change
+
+    const nextField = visibleMaxMarksFields[nextFieldIndex];
+    if (nextField) {
+      // New ID format for this section
+      const nextInputId = `max-marks-${nextField}`; 
+      const nextInput = document.getElementById(nextInputId);
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    }
+  };
+  // --- END: NEW Arrow Key Navigation Logic (Max Marks) ---
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
         <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center"><FaEdit /> Enter CIE Marks</h2>
@@ -366,13 +464,29 @@ export default function EnterMarks() {
                                     fieldApplicability[field] && (
                                         <div key={field}>
                                             <label className="text-xs font-medium text-gray-500">{label}</label>
-                                            <input type="number" value={maxMarks[field] ?? ""} onChange={(e) => { setMaxMarks({ ...maxMarks, [field]: e.target.value }); setIsMaxMarksSaved(false); }} className="w-full border border-gray-300 p-2 rounded text-sm" min={0} />
+                                            <input 
+                                                type="number" 
+                                                id={`max-marks-${field}`}
+                                                onKeyDown={(e) => handleMaxMarksKeyDown(e, field)}
+                                                value={maxMarks[field] ?? ""} 
+                                                onChange={(e) => { setMaxMarks({ ...maxMarks, [field]: e.target.value }); setIsMaxMarksSaved(false); }} 
+                                                className="w-full border border-gray-300 p-2 rounded text-sm" 
+                                                min={0} 
+                                            />
                                         </div>
                                     )
                                 )}
                                 <div className="col-span-2 md:col-span-1">
                                     <label className="text-xs font-medium text-gray-500">Reduced CIE</label>
-                                    <input type="number" value={reducedMax} onChange={(e) => { setReducedMax(e.target.value); setIsMaxMarksSaved(false); }} placeholder="e.g. 50" className="w-full border border-gray-300 p-2 rounded text-sm" />
+                                    <input 
+                                        type="number" 
+                                        id="max-marks-reducedMax"
+                                        onKeyDown={(e) => handleMaxMarksKeyDown(e, "reducedMax")}
+                                        value={reducedMax} 
+                                        onChange={(e) => { setReducedMax(e.target.value); setIsMaxMarksSaved(false); }} 
+                                        placeholder="e.g. 50" 
+                                        className="w-full border border-gray-300 p-2 rounded text-sm" 
+                                    />
                                 </div>
                                 <div className="col-span-2 md:col-span-1 lg:col-span-1">
                                     <button onClick={saveMaxMarksToFirestore} className="w-full bg-green-600 text-white px-4 py-2 rounded-md text-sm font-bold hover:bg-green-700 flex items-center justify-center gap-2">
@@ -386,98 +500,120 @@ export default function EnterMarks() {
 
                 {/* --- Step 3: Enter Student Marks --- */}
                 <fieldset disabled={!isMaxMarksSaved} className={`border-t pt-6 ${!isMaxMarksSaved && "opacity-50"}`}>
-                     <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-3">
-                        <span className="text-white bg-blue-600 rounded-full h-6 w-6 inline-flex items-center justify-center mr-2">3</span>
-                        Enter Student Marks
-                    </h3>
+                        <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-3">
+                            <span className="text-white bg-blue-600 rounded-full h-6 w-6 inline-flex items-center justify-center mr-2">3</span>
+                            Enter Student Marks
+                        </h3>
                     {!isMaxMarksSaved && <p className="text-sm text-red-600 mb-4 font-semibold animate-pulse">You must save "Max Marks" in Step 2 to enable this section.</p>}
 
-                    <div className="relative max-w-md mb-4">
-                        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input type="text" placeholder="Search by Name or USN" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg" disabled={!isMaxMarksSaved}/>
-                    </div>
-                    
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-700">
-                            <thead className="text-xs text-white uppercase bg-blue-600">
-                                <tr>
-                                    <th scope="col" className="px-4 py-3">USN</th>
-                                    <th scope="col" className="px-4 py-3">Name</th>
-                                    {["CIE1", "CIE2", "CIE3"].map(cie => fieldApplicability[cie] && (
-                                        <th key={cie} scope="col" className="px-4 py-3 text-center">
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span>{`${cie} (${maxMarks[cie] || "-"})`}</span>
-                                                <input type="number" placeholder="Fill All" onChange={(e) => handleFillAll(cie, e.target.value)} onWheel={(e) => e.target.blur()} className="w-20 text-xs p-1 border rounded text-gray-800" />
-                                            </div>
-                                        </th>
-                                    ))}
-                                    <th scope="col" className="px-4 py-3 text-center">{`Reduced CIE (${reducedMax || "-"})`}</th>
-                                    {fieldApplicability.labMarks && (
-                                        <th scope="col" className="px-4 py-3 text-center">
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span>{`Lab (${maxMarks.labMarks || "-"})`}</span>
-                                                <input type="number" placeholder="Fill All" onChange={(e) => handleFillAll("labMarks", e.target.value)} onWheel={(e) => e.target.blur()} className="w-20 text-xs p-1 border rounded text-gray-800" />
-                                            </div>
-                                        </th>
-                                    )}
-                                    {fieldApplicability.assignmentMarks && (
-                                        <th scope="col" className="px-4 py-3 text-center">
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span>{`Assignment (${maxMarks.assignmentMarks || "-"})`}</span>
-                                                <input type="number" placeholder="Fill All" onChange={(e) => handleFillAll("assignmentMarks", e.target.value)} onWheel={(e) => e.target.blur()} className="w-20 text-xs p-1 border rounded text-gray-800" />
-                                            </div>
-                                        </th>
-                                    )}
-                                    <th scope="col" className="px-4 py-3 text-center">Total (50)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentStudents.map((student) => {
-                                    const studentMarks = marksData[student.id] || {};
-                                    return (
-                                    <tr key={student.id} className="bg-white border-b hover:bg-gray-50">
-                                        <td className="px-4 py-2 font-medium">{student.id}</td>
-                                        <td className="px-4 py-2">{student.name}</td>
+                        <div className="relative max-w-md mb-4">
+                            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            <input type="text" placeholder="Search by Name or USN" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg" disabled={!isMaxMarksSaved}/>
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-700">
+                                <thead className="text-xs text-white uppercase bg-blue-600">
+                                    <tr>
+                                        <th scope="col" className="px-4 py-3">USN</th>
+                                        <th scope="col" className="px-4 py-3">Name</th>
                                         {["CIE1", "CIE2", "CIE3"].map(cie => fieldApplicability[cie] && (
-                                            <td key={cie} className="p-1 border-x text-center">
-                                                <input type="number" value={studentMarks[cie] === "N/A" ? "" : studentMarks[cie] ?? ""} onChange={(e) => handleMarkChange(student.id, cie, e.target.value)} className="w-20 p-1 border rounded text-center"/>
-                                            </td>
+                                            <th key={cie} scope="col" className="px-4 py-3 text-center">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span>{`${cie} (${maxMarks[cie] || "-"})`}</span>
+                                                    <input type="number" placeholder="Fill All" onChange={(e) => handleFillAll(cie, e.target.value)} onWheel={(e) => e.target.blur()} className="w-20 text-xs p-1 border rounded text-gray-800" />
+                                                </div>
+                                            </th>
                                         ))}
-                                        <td className="p-1 border-x text-center font-semibold">{studentMarks.reducedCIE ?? ""}</td>
+                                        <th scope="col" className="px-4 py-3 text-center">{`Reduced CIE (${reducedMax || "-"})`}</th>
                                         {fieldApplicability.labMarks && (
-                                            <td className="p-1 border-x text-center">
-                                                <input type="number" value={studentMarks.labMarks === "N/A" ? "" : studentMarks.labMarks ?? ""} onChange={(e) => handleMarkChange(student.id, "labMarks", e.target.value)} className="w-20 p-1 border rounded text-center"/>
-                                            </td>
+                                            <th scope="col" className="px-4 py-3 text-center">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span>{`Lab (${maxMarks.labMarks || "-"})`}</span>
+                                                    <input type="number" placeholder="Fill All" onChange={(e) => handleFillAll("labMarks", e.target.value)} onWheel={(e) => e.target.blur()} className="w-20 text-xs p-1 border rounded text-gray-800" />
+                                                </div>
+                                            </th>
                                         )}
                                         {fieldApplicability.assignmentMarks && (
-                                            <td className="p-1 border-x text-center">
-                                                <input type="number" value={studentMarks.assignmentMarks === "N/A" ? "" : studentMarks.assignmentMarks ?? ""} onChange={(e) => handleMarkChange(student.id, "assignmentMarks", e.target.value)} className="w-20 p-1 border rounded text-center"/>
-                                            </td>
+                                            <th scope="col" className="px-4 py-3 text-center">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span>{`Assignment (${maxMarks.assignmentMarks || "-"})`}</span>
+                                                    <input type="number" placeholder="Fill All" onChange={(e) => handleFillAll("assignmentMarks", e.target.value)} onWheel={(e) => e.target.blur()} className="w-20 text-xs p-1 border rounded text-gray-800" />
+                                                </div>
+                                            </th>
                                         )}
-                                        <td className="p-1 border-x text-center font-bold text-blue-700">{studentMarks.totalInternals ?? ""}</td>
+                                        <th scope="col" className="px-4 py-3 text-center">Total (50)</th>
                                     </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                         {filteredStudents.length === 0 && <p className="text-center text-gray-500 py-10">No students found for this class.</p>}
-                    </div>
-
-                    <div className="flex flex-col md:flex-row justify-between items-center mt-6">
-                        <div className="flex flex-wrap gap-4">
-                            <button onClick={handleSubmit} className="flex items-center gap-2 bg-blue-600 text-white font-bold px-4 py-2 rounded-md hover:bg-blue-700 transition">
-                                <FaSave /> Save Marks
-                            </button>
-                            <button onClick={downloadReportAsPDF} className="flex items-center gap-2 bg-red-600 text-white font-bold px-4 py-2 rounded-md hover:bg-red-700 transition">
-                                <FaFilePdf /> Download PDF
-                            </button>
-                             <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-600 text-white font-bold px-4 py-2 rounded-md hover:bg-green-700 transition">
-                                <FaFileExcel /> Export Excel
-                            </button>
+                                </thead>
+                                <tbody>
+                                    {/* NOTICE THE 'studentIndex' ADDED TO THE MAP */}
+                                    {currentStudents.map((student, studentIndex) => {
+                                        const studentMarks = marksData[student.id] || {};
+                                        return (
+                                        <tr key={student.id} className="bg-white border-b hover:bg-gray-50">
+                                            <td className="px-4 py-2 font-medium">{student.id}</td>
+                                            <td className="px-4 py-2">{student.name}</td>
+                                            {["CIE1", "CIE2", "CIE3"].map(cie => fieldApplicability[cie] && (
+                                                <td key={cie} className="p-1 border-x text-center">
+                                                    <input 
+                                                        type="number" 
+                                                        id={`input-${student.id}-${cie}`}
+                                                        onKeyDown={(e) => handleKeyDown(e, studentIndex, cie)}
+                                                        value={studentMarks[cie] === "N/A" ? "" : studentMarks[cie] ?? ""} 
+                                                        onChange={(e) => handleMarkChange(student.id, cie, e.target.value)} 
+                                                        className="w-20 p-1 border rounded text-center"
+                                                    />
+                                                </td>
+                                            ))}
+                                            <td className="p-1 border-x text-center font-semibold">{studentMarks.reducedCIE ?? ""}</td>
+                                            {fieldApplicability.labMarks && (
+                                                <td className="p-1 border-x text-center">
+                                                    <input 
+                                                        type="number" 
+                                                        id={`input-${student.id}-labMarks`}
+                                                        onKeyDown={(e) => handleKeyDown(e, studentIndex, "labMarks")}
+                                                        value={studentMarks.labMarks === "N/A" ? "" : studentMarks.labMarks ?? ""} 
+                                                        onChange={(e) => handleMarkChange(student.id, "labMarks", e.target.value)} 
+                                                        className="w-20 p-1 border rounded text-center"
+                                                    />
+                                                </td>
+                                            )}
+                                            {fieldApplicability.assignmentMarks && (
+                                                <td className="p-1 border-x text-center">
+                                                    <input 
+                                                        type="number" 
+                                                        id={`input-${student.id}-assignmentMarks`}
+                                                        onKeyDown={(e) => handleKeyDown(e, studentIndex, "assignmentMarks")}
+                                                        value={studentMarks.assignmentMarks === "N/A" ? "" : studentMarks.assignmentMarks ?? ""} 
+                                                        onChange={(e) => handleMarkChange(student.id, "assignmentMarks", e.target.value)} 
+                                                        className="w-20 p-1 border rounded text-center"
+                                                    />
+                                                </td>
+                                            )}
+                                            <td className="p-1 border-x text-center font-bold text-blue-700">{studentMarks.totalInternals ?? ""}</td>
+                                        </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                            {filteredStudents.length === 0 && <p className="text-center text-gray-500 py-10">No students found for this class.</p>}
                         </div>
-                        {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
-                    </div>
-                     {submitStatus && <p className={`mt-4 font-semibold text-center rounded-md p-2 ${submitStatus.includes("success") ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{submitStatus}</p>}
+
+                        <div className="flex flex-col md:flex-row justify-between items-center mt-6">
+                            <div className="flex flex-wrap gap-4">
+                                <button onClick={handleSubmit} className="flex items-center gap-2 bg-blue-600 text-white font-bold px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                                    <FaSave /> Save Marks
+                                </button>
+                                <button onClick={downloadReportAsPDF} className="flex items-center gap-2 bg-red-600 text-white font-bold px-4 py-2 rounded-md hover:bg-red-700 transition">
+                                    <FaFilePdf /> Download PDF
+                                </button>
+                                <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-600 text-white font-bold px-4 py-2 rounded-md hover:bg-green-700 transition">
+                                    <FaFileExcel /> Export Excel
+                                </button>
+                            </div>
+                            {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
+                        </div>
+                        {submitStatus && <p className={`mt-4 font-semibold text-center rounded-md p-2 ${submitStatus.includes("success") ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{submitStatus}</p>}
                 </fieldset>
             </>
         )}
