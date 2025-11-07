@@ -279,8 +279,8 @@ export default function Mentor() {
                     <div className="flex flex-col">
                         <label className="mb-2 font-semibold text-gray-700">Select by USN Range</label>
                         <div className="flex gap-2">
-                            <input type="text" placeholder="Start USN" value={startUSN} onChange={(e) => setStartUSN(e.target.value.toUpperCase())} className="p-2 border rounded-md border-gray-300 w-full" />
-                            <input type="text" placeholder="End USN" value={endUSN} onChange={(e) => setEndUSN(e.target.value.toUpperCase())} className="p-2 border rounded-md border-gray-300 w-full" />
+                            <input type="text" placeholder="E.g : 1RF23CS001" value={startUSN} onChange={(e) => setStartUSN(e.target.value.toUpperCase())} className="p-2 border rounded-md border-gray-300 w-full" />
+                            <input type="text" placeholder="E.g : 1RF23CS060" value={endUSN} onChange={(e) => setEndUSN(e.target.value.toUpperCase())} className="p-2 border rounded-md border-gray-300 w-full" />
                         </div>
                     </div>
                 </div>
