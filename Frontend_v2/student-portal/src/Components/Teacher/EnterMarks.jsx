@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { auth, db } from "../../firebase";
-import { FaSearch, FaFilePdf, FaFileExcel, FaSave, FaEdit } from "react-icons/fa";
+import { FaSearch, FaFilePdf, FaFileExcel, FaSave, FaEdit, FaFileImport } from "react-icons/fa";
 import { Check, X } from "lucide-react";
 import { collection, query, where, getDocs, setDoc, doc, getDoc } from "firebase/firestore";
 import jsPDF from "jspdf";
@@ -8,6 +8,7 @@ import autoTable from "jspdf-autotable";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import Pagination from "../helpers/Pagination";
+// <-- 1. IMPORT REMOVED
 
 export default function EnterMarks() {
   const [assignedSubjects, setAssignedSubjects] = useState([]);
@@ -31,6 +32,8 @@ export default function EnterMarks() {
     labMarks: true,
   });
 
+  const fileInputRef = useRef(null);
+
   function safeInt(value) {
     if (value === null || value === undefined || value === "" || value === "N/A") return 0;
     const n = parseInt(value, 10);
@@ -44,8 +47,11 @@ export default function EnterMarks() {
 
   useEffect(() => {
     if (submitStatus) {
-      const timer = setTimeout(() => setSubmitStatus(null), 4000);
-      return () => clearTimeout(timer);
+      // Keep the timer, but only clear success/error messages, not the loading one
+      if (submitStatus !== "Saving marks...") {
+        const timer = setTimeout(() => setSubmitStatus(null), 4000);
+        return () => clearTimeout(timer);
+      }
     }
   }, [submitStatus]);
   
@@ -117,6 +123,86 @@ export default function EnterMarks() {
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
     const fileName = `MarksGradeReport_${selectedSubject.subject}_${selectedSubject.section}.xlsx`;
     XLSX.writeFile(wb, fileName);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!isMaxMarksSaved || students.length === 0) {
+      alert("Please select a subject and save max marks before importing.");
+      e.target.value = null; 
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = event.target.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet);
+
+        const newMarksData = { ...marksData };
+        let recordsProcessed = 0;
+
+        json.forEach((row) => {
+          const usn = row.USN?.toString().trim();
+          if (!usn) return; 
+
+          const studentExists = students.find(s => s.id === usn);
+          if (studentExists) {
+            if (!newMarksData[usn]) newMarksData[usn] = {};
+
+            const fieldMap = {
+              'CIE1': 'CIE1',
+              'CIE2': 'CIE2',
+              'CIE3': 'CIE3',
+              'Assignment': 'assignmentMarks',
+              'Lab Marks': 'labMarks'
+            };
+
+            for (const [excelHeader, stateKey] of Object.entries(fieldMap)) {
+              if (fieldApplicability[stateKey] && row[excelHeader] !== undefined) {
+                const rawValue = row[excelHeader];
+                let rawVal = rawValue === "" || rawValue === "N/A" ? "" : rawValue;
+                let valInt = parseInt(rawVal, 10);
+                const maxAllowed = maxMarks[stateKey];
+
+                if (isNaN(valInt)) {
+                  newMarksData[usn][stateKey] = "";
+                } else if (maxAllowed !== "" && !isNaN(maxAllowed) && valInt > maxAllowed) {
+                  alert(`Error for ${usn}: ${excelHeader} marks (${valInt}) exceed max marks (${maxAllowed}). This value will be skipped.`);
+                } else {
+                  newMarksData[usn][stateKey] = valInt;
+                }
+              }
+            }
+            recordsProcessed++;
+          }
+        });
+
+        setMarksData(newMarksData);
+        alert(`Successfully imported marks for ${recordsProcessed} students. Please review and click "Save Marks" to finalize.`);
+
+      } catch (err) {
+        console.error("Error processing Excel data:", err);
+        alert("Failed to process Excel file. Ensure columns are correct (USN, CIE1, CIE2, CIE3, Assignment, Lab Marks).");
+      }
+    };
+
+    reader.onerror = (error) => {
+      console.error("Error reading file:", error);
+      alert("Failed to read the file.");
+    };
+
+    reader.readAsArrayBuffer(file);
+    e.target.value = null;
   };
 
   function loadImageAsDataURL(url) {
@@ -312,7 +398,6 @@ export default function EnterMarks() {
   const startIndex = (currentPage - 1) * studentsPerPage;
   const currentStudents = filteredStudents.slice(startIndex, startIndex + studentsPerPage);
 
-  // --- START: Arrow Key Navigation Logic (Student Table) ---
   const visibleFields = [
     "CIE1", "CIE2", "CIE3", "labMarks", "assignmentMarks"
   ].filter(field => fieldApplicability[field]);
@@ -358,28 +443,23 @@ export default function EnterMarks() {
       }
     }
   };
-  // --- END: Arrow Key Navigation Logic (Student Table) ---
-
-  // --- START: NEW Arrow Key Navigation Logic (Max Marks) ---
+  
   const handleMaxMarksKeyDown = (e, currentField) => {
     const { key } = e;
     if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) {
       return;
     }
 
-    // Stop default behavior (like value changing on up/down)
     e.preventDefault();
 
-    // We only care about left/right navigation for this row
     if (key === "ArrowUp" || key === "ArrowDown") {
       return;
     }
 
-    // Define the order of fields in the "Max Marks" section
     const visibleMaxMarksFields = [
       "CIE1", "CIE2", "CIE3", "assignmentMarks", "labMarks"
     ].filter(field => fieldApplicability[field]);
-    visibleMaxMarksFields.push("reducedMax"); // "Reduced CIE" is always last in this row
+    visibleMaxMarksFields.push("reducedMax"); 
 
     const currentFieldIndex = visibleMaxMarksFields.indexOf(currentField);
     let nextFieldIndex = currentFieldIndex;
@@ -395,11 +475,10 @@ export default function EnterMarks() {
         return;
     }
 
-    if (nextFieldIndex === currentFieldIndex) return; // No change
+    if (nextFieldIndex === currentFieldIndex) return; 
 
     const nextField = visibleMaxMarksFields[nextFieldIndex];
     if (nextField) {
-      // New ID format for this section
       const nextInputId = `max-marks-${nextField}`; 
       const nextInput = document.getElementById(nextInputId);
       if (nextInput) {
@@ -408,10 +487,17 @@ export default function EnterMarks() {
       }
     }
   };
-  // --- END: NEW Arrow Key Navigation Logic (Max Marks) ---
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <input 
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+          accept=".xlsx, .xls, .csv"
+        />
+
         <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3 justify-center"><FaEdit /> Enter CIE Marks</h2>
 
         {/* --- Step 1: Select Subject --- */}
@@ -546,7 +632,6 @@ export default function EnterMarks() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {/* NOTICE THE 'studentIndex' ADDED TO THE MAP */}
                                     {currentStudents.map((student, studentIndex) => {
                                         const studentMarks = marksData[student.id] || {};
                                         return (
@@ -610,10 +695,34 @@ export default function EnterMarks() {
                                 <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-600 text-white font-bold px-4 py-2 rounded-md hover:bg-green-700 transition">
                                     <FaFileExcel /> Export Excel
                                 </button>
+                                <button 
+                                  onClick={handleImportClick} 
+                                  className="flex items-center gap-2 bg-emerald-600 text-white font-bold px-4 py-2 rounded-md hover:bg-emerald-700 transition"
+                                >
+                                    <FaFileImport /> Import Excel
+                                </button>
                             </div>
                             {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
                         </div>
-                        {submitStatus && <p className={`mt-4 font-semibold text-center rounded-md p-2 ${submitStatus.includes("success") ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{submitStatus}</p>}
+                        
+                        {/* --- 2. MODIFIED STATUS BLOCK --- */}
+                        {submitStatus && (
+                          <div className="flex justify-center items-center mt-4">
+                            {submitStatus === "Saving marks..." ? (
+                              // Loading state: Spinner + Text
+                              <div className="flex items-center justify-center gap-2 p-2 bg-blue-100 text-blue-800 rounded-md font-semibold text-sm">
+                                <div className="w-4 h-4 border-2 border-t-transparent border-blue-800 rounded-full animate-spin"></div>
+                                <span>Saving marks...</span>
+                              </div>
+                            ) : (
+                              // Success or Error state: Just Text
+                              <p className={`font-semibold text-center rounded-md p-2 ${submitStatus.includes("success") ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {submitStatus}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
                 </fieldset>
             </>
         )}
