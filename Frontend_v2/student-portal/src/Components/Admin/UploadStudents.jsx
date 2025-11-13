@@ -5,7 +5,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   doc, getDoc, setDoc, updateDoc, collection, getDocs, deleteDoc, query, where,
 } from "firebase/firestore";
-import Pagination from "../helpers/Pagination";
+import Pagination from "../helpers/Pagination"; // Adjust path as needed
 import { FaUpload, FaUserEdit, FaUserSlash, FaFileExcel, FaInfoCircle, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 
 // A reusable component for displaying styled messages
@@ -33,7 +33,7 @@ const StatusMessage = ({ message, type, errors = [] }) => {
             <div className="mt-2 pl-8 border-l-2 border-red-300">
                 <h4 className="font-bold mb-1">Error Details:</h4>
                 <ul className="list-disc list-inside text-xs font-normal space-y-1 max-h-32 overflow-y-auto">
-                    {errors.map((err, i) => (<li key={i}>{err.email}: {err.error}</li>))}
+                    {errors.map((err, i) => (<li key={i}>{err.email || err.admissionId || `Row ${i}`}: {err.error}</li>))}
                 </ul>
             </div>
         )}
@@ -44,7 +44,6 @@ const StatusMessage = ({ message, type, errors = [] }) => {
 
 const UploadStudents = () => {
     const [activeTab, setActiveTab] = useState('upload');
-    // ... all other state variables remain unchanged
     const [file, setFile] = useState(null);
     const [status, setStatus] = useState("");
     const [statusType, setStatusType] = useState("info");
@@ -62,7 +61,7 @@ const UploadStudents = () => {
     const [deleteSelectedSem, setDeleteSelectedSem] = useState("");
     const [deleteSelectedSection, setDeleteSelectedSection] = useState("");
     const [deleteSemStudents, setDeleteSemStudents] = useState([]);
-    const [deleteCheckedStudents, setDeleteCheckedStudents] = useState([]);
+    const [deleteCheckedStudents, setDeleteCheckedStudents] = useState([]); // Will store {id, usn}
     const [deleteSelectAll, setDeleteSelectAll] = useState(false);
     const [deletionConfirmed, setDeletionConfirmed] = useState(false);
     const [deleteCurrentPage, setDeleteCurrentPage] = useState(1);
@@ -80,16 +79,47 @@ const UploadStudents = () => {
         }
     };
 
-    // --- All useEffect and handler logic remains the same, just with updated messaging ---
+    // --- Fetch students for UPDATE tab ---
     useEffect(() => {
-        if (!updateSelectedSem) { setUpdateSemStudents([]); return; }
-        const fetchStudents = async () => { /* ... logic unchanged ... */ };
+        const fetchStudents = async () => {
+            if (!updateSelectedSem) {
+                setUpdateSemStudents([]);
+                return;
+            }
+            try {
+                let q = query(collection(db, "students"), where("semester", "==", Number(updateSelectedSem)));
+                if (updateSelectedSection) {
+                    q = query(q, where("section", "==", updateSelectedSection));
+                }
+                const snapshot = await getDocs(q);
+                const studentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setUpdateSemStudents(studentsList);
+            } catch (err) {
+                showMessage("Failed to fetch students: " + err.message, "error");
+            }
+        };
         fetchStudents();
     }, [updateSelectedSem, updateSelectedSection]);
 
+    // --- Fetch students for DELETE tab ---
     useEffect(() => {
-        if (!deleteSelectedSem) { setDeleteSemStudents([]); return; }
-        const fetchStudents = async () => { /* ... logic unchanged ... */ };
+        const fetchStudents = async () => {
+            if (!deleteSelectedSem) {
+                setDeleteSemStudents([]);
+                return;
+            }
+            try {
+                let q = query(collection(db, "students"), where("semester", "==", Number(deleteSelectedSem)));
+                if (deleteSelectedSection) {
+                    q = query(q, where("section", "==", deleteSelectedSection));
+                }
+                const snapshot = await getDocs(q);
+                const studentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setDeleteSemStudents(studentsList);
+            } catch (err) {
+                showMessage("Failed to fetch students: " + err.message, "error");
+            }
+        };
         fetchStudents();
     }, [deleteSelectedSem, deleteSelectedSection]);
 
@@ -99,26 +129,163 @@ const UploadStudents = () => {
         setErrors([]);
     };
 
+    // --- UPLOAD LOGIC (UPDATED) ---
     const handleUpload = async () => {
         if (!file) return showMessage("Please select an Excel file.", "error");
-        showMessage("Uploading and processing...", "info", [], null); // No timeout
-        // ... all file processing logic is unchanged
-        // On success: showMessage(`Upload completed: ${successCount} processed, ${failed.length} failed.`, "success", failed);
-        // On failure: showMessage("Upload failed: " + err.message, "error");
+
+        showMessage("Uploading and processing... This may take a moment.", "info", [], null);
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            let successCount = 0;
+            const failed = [];
+            
+            try {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, { type: "array" });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                if (jsonData.length === 0) {
+                    return showMessage("The Excel file is empty.", "error");
+                }
+
+                // Define the 11 required fields
+                const requiredFields = [
+                    'usn', 'name', 'email', 'semester', 'section', 
+                    'department', 'gradYear', 'parentEmail', 'parentNo', 'phone', 'role'
+                ];
+
+                for (const [index, row] of jsonData.entries()) {
+                    // Use 'Admission ID' as the primary key from the row
+                    const admissionId = row["Admission ID"]?.toString().trim();
+                    const email = row.email?.toString().trim();
+                    
+                    if (!admissionId || !email) {
+                        failed.push({ admissionId: admissionId || `Row ${index + 2}`, error: "Missing required 'Admission ID' or 'email' field." });
+                        continue;
+                    }
+
+                    try {
+                        // 1. Build the student data object from the 11 fields
+                        const studentDocData = {};
+                        let missingField = false;
+                        
+                        for (const field of requiredFields) {
+                            const value = row[field];
+                            if (value === undefined || value === null || value === "") {
+                                missingField = true;
+                                break; 
+                            }
+                            
+                            if (['gradYear', 'parentNo', 'phone', 'semester'].includes(field)) {
+                                studentDocData[field] = Number(value);
+                                if (isNaN(studentDocData[field])) {
+                                    throw new Error(`Invalid number for field: ${field}`);
+                                }
+                            } else {
+                                studentDocData[field] = value.toString().trim();
+                            }
+                        }
+
+                        if (missingField) {
+                            failed.push({ admissionId: admissionId, error: "Missing one or more required fields." });
+                            continue;
+                        }
+                        
+                        // 2. Check if student exists using Admission ID as the Document ID
+                        const studentRef = doc(db, "students", admissionId);
+                        const studentSnap = await getDoc(studentRef);
+
+                        if (studentSnap.exists()) {
+                            // --- UPDATE EXISTING STUDENT ---
+                            await updateDoc(studentRef, studentDocData);
+                        } else {
+                            // --- CREATE NEW STUDENT ---
+                            // 1. Create Auth user
+                            const userCredential = await createUserWithEmailAndPassword(auth, email, "college@123");
+                            const user = userCredential.user;
+
+                            // 2. Create Firestore doc
+                            await setDoc(studentRef, {
+                                ...studentDocData,
+                                uid: user.uid, // Link to the auth account
+                            });
+                        }
+                        successCount++;
+
+                    } catch (err) {
+                        let errorMsg = err.message;
+                        if (err.code === "auth/email-already-in-use") {
+                            errorMsg = "Email already in use by another account.";
+                        }
+                        failed.push({ admissionId: admissionId, email: email, error: errorMsg });
+                    }
+                } // End of for...of loop
+
+                if (failed.length > 0) {
+                    showMessage(`Upload completed: ${successCount} processed, ${failed.length} failed.`, "error", failed);
+                } else {
+                    showMessage(`Upload successful! ${successCount} students processed.`, "success");
+                }
+
+            } catch (err) {
+                showMessage("Upload failed: " + err.message, "error");
+            }
+        }; // End of reader.onload
+
+        reader.onerror = () => {
+             showMessage("Failed to read the file.", "error");
+        };
+
+        reader.readAsArrayBuffer(file);
     };
 
     const handleUpdateSemester = async () => {
         if (updateCheckedStudents.length === 0 || newSem === "") return showMessage("Please select students and a new semester.", "error");
         if (Number(newSem) > 8 || Number(newSem) < 1) return showMessage("Semester must be between 1 and 8.", "error");
+        
+        showMessage("Updating semesters...", "info", [], null);
         try {
-            // ... update logic is unchanged
+            const batch = [];
+            // updateCheckedStudents is an array of Admission IDs
+            updateCheckedStudents.forEach(id => {
+                const docRef = doc(db, "students", id);
+                batch.push(updateDoc(docRef, { semester: Number(newSem) }));
+            });
+            await Promise.all(batch);
+            
             showMessage(`Updated ${updateCheckedStudents.length} students to semester ${newSem}`, "success");
-            // ... reset state
+            
+            let q = query(collection(db, "students"), where("semester", "==", Number(updateSelectedSem)));
+            if (updateSelectedSection) {
+                q = query(q, where("section", "==", updateSelectedSection));
+            }
+            const snapshot = await getDocs(q);
+            const studentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setUpdateSemStudents(studentsList);
+
+            setUpdateCheckedStudents([]);
+            setUpdateSelectAll(false);
+            setNewSem("");
+
         } catch (err) {
             showMessage("Update failed: " + err.message, "error");
         }
     };
     
+    // This function receives a USN (not Admission ID)
+    const deleteStudentMarks = async (usn) => {
+        const marksQuery = query(collection(db, "marks"), where("rollNo", "==", usn));
+        const marksSnap = await getDocs(marksQuery);
+        const deletePromises = [];
+        marksSnap.forEach((doc) => {
+            deletePromises.push(deleteDoc(doc.ref));
+        });
+        await Promise.all(deletePromises);
+    };
+
     const handleDeleteStudents = async () => {
         if (!deletionConfirmed) return showMessage("Please confirm deletion by checking the box.", "error");
         if (deleteCheckedStudents.length === 0) return showMessage("Please select at least one student to delete.", "error");
@@ -126,20 +293,62 @@ const UploadStudents = () => {
         
         showMessage(`Deleting ${deleteCheckedStudents.length} students... This may take a moment.`, "info", [], null);
         try {
-            // ... deletion logic is unchanged
+            const deletePromises = [];
+            // deleteCheckedStudents is an array of {id, usn}
+            deleteCheckedStudents.forEach(student => {
+                // Delete the student doc using Admission ID
+                deletePromises.push(deleteDoc(doc(db, "students", student.id)));
+                // Delete all related marks using USN
+                deletePromises.push(deleteStudentMarks(student.usn));
+            });
+
+            await Promise.all(deletePromises);
+            
             showMessage(`Successfully deleted ${deleteCheckedStudents.length} students and their related data.`, "success");
-            // ... reset state
+            
+            let q = query(collection(db, "students"), where("semester", "==", Number(deleteSelectedSem)));
+            if (deleteSelectedSection) {
+                q = query(q, where("section", "==", deleteSelectedSection));
+            }
+            const snapshot = await getDocs(q);
+            const studentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setDeleteSemStudents(studentsList);
+            
+            setDeleteCheckedStudents([]);
+            setDeleteSelectAll(false);
+            setDeletionConfirmed(false);
         } catch (err) {
             showMessage(`Deletion failed: ${err.message}`, "error");
         }
     };
     
-    // All other helper functions (toggles, pagination logic) remain unchanged
-    const toggleUpdateStudentCheck = (id) => { /* ... */ };
-    const toggleUpdateSelectAll = (checked) => { /* ... */ };
-    const toggleDeleteStudentCheck = (id) => { /* ... */ };
-    const toggleDeleteSelectAll = (checked) => { /* ... */ };
-    const deleteStudentMarks = async (studentId) => { /* ... */ };
+    // --- Checkbox & Pagination Helpers ---
+    const toggleUpdateStudentCheck = (id) => {
+        setUpdateCheckedStudents(prev => 
+            prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
+        );
+    };
+
+    const toggleUpdateSelectAll = (checked) => {
+        setUpdateSelectAll(checked);
+        // updateCheckedStudents only needs the ID
+        setUpdateCheckedStudents(checked ? paginatedUpdateStudents.map(s => s.id) : []);
+    };
+
+    const toggleDeleteStudentCheck = (student) => {
+        setDeleteCheckedStudents(prev => 
+            prev.some(s => s.id === student.id)
+            ? prev.filter(s => s.id !== student.id)
+            // Store an object with both ID and USN
+            : [...prev, { id: student.id, usn: student.usn }] 
+        );
+    };
+
+    const toggleDeleteSelectAll = (checked) => {
+        setDeleteSelectAll(checked);
+        // Store objects with both ID and USN
+        setDeleteCheckedStudents(checked ? paginatedDeleteStudents.map(s => ({ id: s.id, usn: s.usn })) : []);
+    };
 
     const totalUpdatePages = Math.ceil(updateSemStudents.length / STUDENTS_PER_PAGE);
     const paginatedUpdateStudents = updateSemStudents.slice((updateCurrentPage - 1) * STUDENTS_PER_PAGE, updateCurrentPage * STUDENTS_PER_PAGE);
@@ -149,7 +358,7 @@ const UploadStudents = () => {
 
     const TabButton = ({ tabName, label, icon: Icon }) => (
         <button
-          onClick={() => setActiveTab(tabName)}
+          onClick={() => { setStatus(""); setErrors([]); setActiveTab(tabName); }}
           className={`flex items-center gap-2 px-4 py-3 font-semibold text-sm rounded-t-lg border-b-4 transition-colors ${
             activeTab === tabName
               ? 'border-blue-600 text-blue-600'
@@ -174,14 +383,33 @@ const UploadStudents = () => {
             {activeTab === 'upload' && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800  flex items-center gap-3 justify-center">Upload Students via Excel</h2>
+                    
+                    {/* --- INSTRUCTION BOX (UPDATED) --- */}
                     <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 mb-6 rounded-r-lg text-sm">
                         <div className="flex items-start"><FaInfoCircle className="h-5 w-5 mr-3 mt-1 flex-shrink-0" />
-                            <div><p className="font-bold ">Instructions:</p>
-                                <p>Upload an `.xlsx` or `.xls` file with columns for: `Document ID` (USN), `email`, `name`, `semester`, `section`, etc.</p>
-                                <p>The system will create new students or update existing ones based on the `Document ID`.</p>
+                            <div>
+                                <p className="font-bold ">Instructions:</p>
+                                <p>Upload an `.xlsx` or `.xls` file with the following columns:</p>
+                                <ul className="list-disc list-inside text-xs font-normal pl-2">
+                                    <li>Admission ID (This will be the Document ID)</li>
+                                    <li>usn</li>
+                                    <li>name</li>
+                                    <li>email</li>
+                                    <li>semester</li>
+                                    <li>section</li>
+                                    <li>department</li>
+                                    <li>gradYear</li>
+                                    <li>parentEmail</li>
+                                    <li>parentNo</li>
+                                    <li>phone</li>
+                                    <li>role</li>
+                                </ul>
+                                <p className="mt-2">The system will create new students or update existing ones based on the **Admission ID**.</p>
+                          
                             </div>
                         </div>
                     </div>
+
                     <input type="file" id="student-file-upload" accept=".xlsx, .xls" onChange={handleFileChange} className="hidden" />
                     <label htmlFor="student-file-upload" className="w-full flex flex-col items-center px-4 py-6 bg-white text-blue-600 rounded-lg shadow-sm border-2 border-dashed border-gray-300 cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition">
                         <FaFileExcel className="w-10 h-10 mb-3" />
@@ -191,7 +419,7 @@ const UploadStudents = () => {
                 </div>
             )}
 
-            {/* --- UPDATE TAB --- */}
+            {/* --- UPDATE TAB (Table Updated) --- */}
             {activeTab === 'update' && (
                  <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800  flex items-center gap-3 justify-center">Update Student Semesters</h2>
@@ -202,6 +430,7 @@ const UploadStudents = () => {
                         </select>
                         <select value={updateSelectedSection} onChange={(e) => setUpdateSelectedSection(e.target.value)} className="w-full md:w-auto p-2 border border-gray-300 rounded-md">
                             <option value="">Filter by Section</option>
+                            <option value="">All Sections</option>
                             {sectionList.map((section) => (<option key={section} value={section}>{section}</option>))}
                         </select>
                         <div className="flex-grow"></div>
@@ -215,14 +444,24 @@ const UploadStudents = () => {
                                     <thead className="text-xs text-white uppercase bg-blue-600">
                                         <tr>
                                             <th scope="col" className="p-4"><input type="checkbox" checked={updateSelectAll} onChange={(e) => toggleUpdateSelectAll(e.target.checked)} /></th>
-                                            <th scope="col" className="px-6 py-3">USN</th><th scope="col" className="px-6 py-3">Name</th><th scope="col" className="px-6 py-3">Email</th><th scope="col" className="px-6 py-3">Section</th><th scope="col" className="px-6 py-3">Semester</th>
+                                            <th scope="col" className="px-6 py-3">Admission ID</th>
+                                            <th scope="col" className="px-6 py-3">USN</th>
+                                            <th scope="col" className="px-6 py-3">Name</th>
+                                            <th scope="col" className="px-6 py-3">Email</th>
+                                            <th scope="col" className="px-6 py-3">Section</th>
+                                            <th scope="col" className="px-6 py-3">Semester</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {paginatedUpdateStudents.map((s) => (
                                             <tr key={s.id} className="bg-white border-b hover:bg-gray-50">
                                                 <td className="w-4 p-4"><input type="checkbox" checked={updateCheckedStudents.includes(s.id)} onChange={() => toggleUpdateStudentCheck(s.id)} /></td>
-                                                <td className="px-6 py-4 font-medium">{s.id}</td><td className="px-6 py-4">{s.name}</td><td className="px-6 py-4">{s.email}</td><td className="px-6 py-4">{s.section}</td><td className="px-6 py-4">{s.semester}</td>
+                                                <td className="px-6 py-4 font-medium">{s.id}</td>
+                                                <td className="px-6 py-4">{s.usn}</td>
+                                                <td className="px-6 py-4">{s.name}</td>
+                                                <td className="px-6 py-4">{s.email}</td>
+                                                <td className="px-6 py-4">{s.section}</td>
+                                                <td className="px-6 py-4">{s.semester}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -231,72 +470,91 @@ const UploadStudents = () => {
                             {totalUpdatePages > 1 && (<div className="flex justify-center mt-4"><Pagination currentPage={updateCurrentPage} totalPages={totalUpdatePages} onPageChange={setUpdateCurrentPage} /></div>)}
                         </div>
                     )}
-                </div>
+                    {updateSemStudents.length === 0 && updateSelectedSem && (
+                        <p className="text-center text-gray-500 py-10">No students found for the selected filter.</p>
+                    )}
+                 </div>
             )}
             
-            {/* --- DELETE TAB --- */}
-{activeTab === 'delete' && (
-    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-2xl font-bold mb-6 text-red-700  flex items-center gap-3 justify-center">Delete Students</h2>
-        <div className="flex flex-col md:flex-row gap-4 mb-6 items-center bg-red-50 p-4 rounded-lg">
-            <select value={deleteSelectedSem} onChange={(e) => setDeleteSelectedSem(e.target.value)} className="w-full md:w-auto p-2 border-gray-300 rounded-md">
-                <option value="">Filter by Semester</option>
-                {semList.map((sem) => (<option key={sem} value={sem}>{sem}</option>))}
-            </select>
-            <select value={deleteSelectedSection} onChange={(e) => setDeleteSelectedSection(e.target.value)} className="w-full md:w-auto p-2 border-gray-300 rounded-md">
-                <option value="">Filter by Section</option>
-                {sectionList.map((section) => (<option key={section} value={section}>{section}</option>))}
-            </select>
-        </div>
+            {/* --- DELETE TAB (Table and Checkbox logic Updated) --- */}
+            {activeTab === 'delete' && (
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <h2 className="text-2xl font-bold mb-6 text-red-700  flex items-center gap-3 justify-center">Delete Students</h2>
+                    <div className="flex flex-col md:flex-row gap-4 mb-6 items-center bg-red-50 p-4 rounded-lg">
+                        <select value={deleteSelectedSem} onChange={(e) => setDeleteSelectedSem(e.target.value)} className="w-full md:w-auto p-2 border-gray-300 rounded-md">
+                            <option value="">Filter by Semester</option>
+                            {semList.map((sem) => (<option key={sem} value={sem}>{sem}</option>))}
+                        </select>
+                        <select value={deleteSelectedSection} onChange={(e) => setDeleteSelectedSection(e.target.value)} className="w-full md:w-auto p-2 border-gray-300 rounded-md">
+                            <option value="">Filter by Section</option>
+                            <option value="">All Sections</option>
+                            {sectionList.map((section) => (<option key={section} value={section}>{section}</option>))}
+                        </select>
+                    </div>
 
-        {deleteSemStudents.length > 0 && (
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-700">
-                    <thead className="text-xs text-white uppercase bg-red-600">
-                        <tr>
-                            <th scope="col" className="p-4"><input type="checkbox" checked={deleteSelectAll} onChange={(e) => toggleDeleteSelectAll(e.target.checked)} /></th>
-                            <th scope="col" className="px-6 py-3">USN</th><th scope="col" className="px-6 py-3">Name</th><th scope="col" className="px-6 py-3">Email</th><th scope="col" className="px-6 py-3">Section</th><th scope="col" className="px-6 py-3">Semester</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginatedDeleteStudents.map((s) => (
-                            <tr key={s.id} className="bg-white border-b hover:bg-gray-50">
-                                <td className="w-4 p-4"><input type="checkbox" checked={deleteCheckedStudents.includes(s.id)} onChange={() => toggleDeleteStudentCheck(s.id)} /></td>
-                                <td className="px-6 py-4 font-medium">{s.id}</td><td className="px-6 py-4">{s.name}</td><td className="px-6 py-4">{s.email}</td><td className="px-6 py-4">{s.section}</td><td className="px-6 py-4">{s.semester}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        )}
+                    {deleteSemStudents.length > 0 && (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-700">
+                                <thead className="text-xs text-white uppercase bg-red-600">
+                                    <tr>
+                                        <th scope="col" className="p-4"><input type="checkbox" checked={deleteSelectAll} onChange={(e) => toggleDeleteSelectAll(e.target.checked)} /></th>
+                                        <th scope="col" className="px-6 py-3">Admission ID</th>
+                                        <th scope="col" className="px-6 py-3">USN</th>
+                                        <th scope="col" className="px-6 py-3">Name</th>
+                                        <th scope="col" className="px-6 py-3">Email</th>
+                                        <th scope="col" className="px-6 py-3">Section</th>
+                                        <th scope="col" className="px-6 py-3">Semester</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedDeleteStudents.map((s) => (
+                                        <tr key={s.id} className="bg-white border-b hover:bg-gray-50">
+                                            <td className="w-4 p-4">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={deleteCheckedStudents.some(student => student.id === s.id)} 
+                                                    onChange={() => toggleDeleteStudentCheck(s)} 
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 font-medium">{s.id}</td>
+                                            <td className="px-6 py-4">{s.usn}</td>
+                                            <td className="px-6 py-4">{s.name}</td>
+                                            <td className="px-6 py-4">{s.email}</td>
+                                            <td className="px-6 py-4">{s.section}</td>
+                                            <td className="px-6 py-4">{s.semester}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
-        {deleteSemStudents.length === 0 && deleteSelectedSem && (
-             <p className="text-center text-gray-500 py-10">No students found for the selected filter.</p>
-        )}
+                    {deleteSemStudents.length === 0 && deleteSelectedSem && (
+                        <p className="text-center text-gray-500 py-10">No students found for the selected filter.</p>
+                    )}
 
-        {totalDeletePages > 1 && (<div className="flex justify-center mt-4"><Pagination currentPage={deleteCurrentPage} totalPages={totalDeletePages} onPageChange={setDeleteCurrentPage} /></div>)}
-        
-        {/* ✅ CORRECTED DELETE ACTION AREA */}
-        <div className="mt-6 p-4 bg-red-100 border-l-4 border-red-500 rounded-r-lg flex flex-col md:flex-row items-center gap-4">
-            <label className="flex-grow font-semibold text-red-800">
-                <input type="checkbox" checked={deletionConfirmed} onChange={(e) => setDeletionConfirmed(e.target.checked)} className="mr-2 h-4 w-4 accent-red-600" />
-                I understand this will permanently delete the students and all their related data.
-            </label>
-            <button 
-                disabled={!deletionConfirmed || deleteCheckedStudents.length === 0} 
-                className={`w-full md:w-auto px-6 py-2 rounded-md font-bold text-white transition flex items-center justify-center gap-2 ${
-                    (deletionConfirmed && deleteCheckedStudents.length > 0) 
-                    ? "bg-red-600 hover:bg-red-700" 
-                    : "bg-gray-400 cursor-not-allowed"
-                }`} 
-                onClick={handleDeleteStudents}
-            >
-                <FaUserSlash />
-                Delete Selected ({deleteCheckedStudents.length})
-            </button>
-        </div>
-    </div>
-)}
+                    {totalDeletePages > 1 && (<div className="flex justify-center mt-4"><Pagination currentPage={deleteCurrentPage} totalPages={totalDeletePages} onPageChange={setDeleteCurrentPage} /></div>)}
+                    
+                    <div className="mt-6 p-4 bg-red-100 border-l-4 border-red-500 rounded-r-lg flex flex-col md:flex-row items-center gap-4">
+                        <label className="flex-grow font-semibold text-red-800">
+                            <input type="checkbox" checked={deletionConfirmed} onChange={(e) => setDeletionConfirmed(e.target.checked)} className="mr-2 h-4 w-4 accent-red-600" />
+                            I understand this will permanently delete the students and all their related data.
+                        </label>
+                        <button 
+                            disabled={!deletionConfirmed || deleteCheckedStudents.length === 0} 
+                            className={`w-full md:w-auto px-6 py-2 rounded-md font-bold text-white transition flex items-center justify-center gap-2 ${
+                                (deletionConfirmed && deleteCheckedStudents.length > 0) 
+                                ? "bg-red-600 hover:bg-red-700" 
+                                : "bg-gray-400 cursor-not-allowed"
+                            }`} 
+                            onClick={handleDeleteStudents}
+                        >
+                            <FaUserSlash />
+                            Delete Selected ({deleteCheckedStudents.length})
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
