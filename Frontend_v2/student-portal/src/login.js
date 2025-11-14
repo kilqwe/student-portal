@@ -252,7 +252,7 @@ function Login() {
 {/* Copyright (This part remains untouched) */}
 <div className="border-t border-gray-200 mt-6 mb-2" />
 <p className="text-center text-[10px] text-gray-400">
-  © 2025 Pravardhan Prasad | Neha Dinesh Rangdal | Anukriti Sharma | R Shreyas<br />
+  © 2025 Pravardhan Prasad | Neha Dinesh Rangdal | Anukriti Sharma | R Shreyas <br />
   R.V. Institute of Technology and Management
 </p>
           </div>
