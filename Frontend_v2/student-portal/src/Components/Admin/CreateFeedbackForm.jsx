@@ -127,29 +127,225 @@ const CreateFeedbackForm = () => {
   }
 
   const handleDownloadReport = async () => {
-     // ... (This entire function's complex logic is preserved)
-     // ... (Just replacing alerts with showMessage)
-     try {
-        const reportSnapshot = await getDocs(collection(db, "feedbackReports"));
-        if (reportSnapshot.empty) {
-            return showMessage("No feedback report data found to download.", "error");
+    try {
+      const reportSnapshot = await getDocs(collection(db, "feedbackReports"));
+      if (reportSnapshot.empty) {
+        return showMessage("No feedback report data found", "error");
+      }
+
+      const pdfDoc = new jsPDF();
+      const pageWidth = pdfDoc.internal.pageSize.getWidth();
+      const margin = 5;
+      const boxWidth = pageWidth - 2 * margin;
+      let y = margin;
+
+      const logoDataUrl = await loadImageAsDataURL("/RV_logo.jpg").catch(
+        () => null
+      );
+
+      const drawHeader = () => {
+        pdfDoc.setDrawColor(180);
+        pdfDoc.setLineWidth(0.4);
+        pdfDoc.rect(
+          margin,
+          margin,
+          boxWidth,
+          pdfDoc.internal.pageSize.getHeight() - 2 * margin,
+          "S"
+        );
+
+        if (logoDataUrl) {
+          pdfDoc.addImage(logoDataUrl, "PNG", margin + 2, y + 2, 20, 20);
         }
-        // ... rest of PDF generation logic
-        // pdfDoc.save("Feedback_Report.pdf");
-     } catch (error) {
-        showMessage("Failed to generate PDF report.", "error");
-     }
+
+        pdfDoc.setFont("helvetica", "bold");
+        pdfDoc.setFontSize(14);
+        pdfDoc.text(
+          "RV Institute of Technology and Management",
+          pageWidth / 2,
+          y + 10,
+          { align: "center" }
+        );
+
+        pdfDoc.setFont("helvetica", "normal");
+        pdfDoc.setFontSize(10);
+        pdfDoc.text("Rashtriya Sikshana Samithi Trust", pageWidth / 2, y + 16, {
+          align: "center",
+        });
+        pdfDoc.text(
+          "Department of Computer Science and Engineering",
+          pageWidth / 2,
+          y + 21,
+          { align: "center" }
+        );
+        pdfDoc.text("Bengaluru - 560076", pageWidth / 2, y + 26, {
+          align: "center",
+        });
+
+        pdfDoc.setLineWidth(0.5);
+        pdfDoc.line(margin + 2, y + 32, pageWidth - margin - 2, y + 32);
+
+        y = 38;
+      };
+
+      drawHeader();
+
+      for (const teacherDoc of reportSnapshot.docs) {
+        const teacherName = teacherDoc.id;
+        const teacherData = teacherDoc.data();
+
+        if (!teacherData || typeof teacherData !== "object") continue;
+
+        pdfDoc.setFont("helvetica", "bold");
+        pdfDoc.setFontSize(12);
+        pdfDoc.text(`Teacher: ${teacherName}`, margin + 10, y + 10);
+        y += 2;
+
+        const headers = [
+          [
+            "Subject",
+            "C1",
+            "C2",
+            "C3",
+            "C4",
+            "C5",
+            "C6",
+            "C7",
+            "C8",
+            "C9",
+            "C10",
+            "C11",
+            "C12",
+            "No. of Students",
+            "Total Points",
+            "Percentage",
+          ],
+        ];
+
+        const rows = [];
+
+        for (const [subjectCode, feedback] of Object.entries(teacherData)) {
+          if (!feedback || typeof feedback !== "object") continue;
+
+          const {
+            total_students = 0,
+            total = 0,
+            percentage = 0,
+            ...criteria
+          } = feedback;
+
+          const row = [subjectCode];
+          for (let i = 1; i <= 12; i++) {
+            const key = `c${i}`;
+            row.push(criteria[key] !== undefined ? criteria[key] : 0);
+          }
+          row.push(total_students, total, `${percentage}%`);
+          rows.push(row);
+        }
+
+        autoTable(pdfDoc, {
+          startY: y + 11,
+          head: headers,
+          body: rows,
+          theme: "grid",
+          headStyles: {
+            fillColor: [41, 128, 185],
+            fontSize: 9,
+            halign: "center",
+            textColor: [255, 255, 255],
+          },
+          bodyStyles: {
+            fontSize: 9,
+            halign: "center",
+          },
+          margin: { left: margin + 10, right: margin + 10 },
+          styles: { cellPadding: 2 },
+        });
+
+        y = pdfDoc.lastAutoTable.finalY + 10;
+
+        if (y > 270) {
+          pdfDoc.addPage();
+          y = margin;
+          drawHeader();
+        }
+      }
+
+      pdfDoc.save("Feedback_Report.pdf");
+      console.log("✅ Feedback report generated.");
+      showMessage("✅ Feedback report generated.", "success");
+    } catch (error) {
+      console.error("❌ Error generating report:", error);
+      showMessage("Failed to generate report.", "error");
+    }
   };
 
   const handleSendReport = async () => {
     if (!statusSemester || !statusSection) {
-      return showMessage("Select semester and section first.", "error");
+      return showMessage("Select semester and section first", "error");
     }
     try {
-      // ... (This entire function's complex logic is preserved)
-      // ... (Just replacing alerts with showMessage)
-      showMessage("Feedback reports successfully generated and sent.", "success");
+      const formQuery = query(
+        collection(db, "feedbackForms"),
+        where("semester", "==", Number(statusSemester)),
+        where("section", "==", statusSection)
+      );
+      const formSnapshot = await getDocs(formQuery);
+      if (formSnapshot.empty) {
+        return showMessage("No feedback form found for this semester and section", "error");
+      }
+      const sortedForms = formSnapshot.docs.sort(
+        (a, b) => b.data().createdAt?.seconds - a.data().createdAt?.seconds
+      );
+      const latestForm = sortedForms[0];
+      const feedbackFormId = latestForm.id;
+      const subforms = latestForm.data().subforms;
+      for (const { subjectCode, teacherName } of subforms) {
+        const responseQuery = query(
+          collection(db, "feedbackResponses"),
+          where("feedbackFormId", "==", feedbackFormId),
+          where("subjectCode", "==", subjectCode),
+          where("teacherName", "==", teacherName)
+        );
+        const responseSnap = await getDocs(responseQuery);
+        if (responseSnap.empty) continue;
+        const totalRatings = {
+          C1: 0, C2: 0, C3: 0, C4: 0, C5: 0, C6: 0,
+          C7: 0, C8: 0, C9: 0, C10: 0, C11: 0, C12: 0,
+        };
+        let totalOverall = 0;
+        let count = 0;
+        responseSnap.forEach((docSnap) => {
+          const data = docSnap.data();
+          Object.entries(data.ratings).forEach(([c, val]) => {
+            totalRatings[c] += val || 0;
+          });
+          totalOverall += data.total || 0;
+          count += 1;
+        });
+        const subjectReport = {
+          total_students: count,
+          total: totalOverall,
+          percentage: Math.round((totalOverall / (count * 480)) * 100),
+        };
+        for (const c in totalRatings) {
+          subjectReport[c.toLowerCase()] = totalRatings[c]; // C1 → c1
+        }
+        const teacherReportRef = doc(db, "feedbackReports", teacherName);
+        const existingReport = await getDoc(teacherReportRef);
+        if (!existingReport.exists()) {
+          await setDoc(teacherReportRef, {
+            [subjectCode]: subjectReport,
+          });
+        } else {
+          await updateDoc(teacherReportRef, {
+            [subjectCode]: subjectReport,
+          });
+        }
+      }
+      showMessage("Feedback reports successfully generated and sent to teachers.", "success");
     } catch (err) {
+      console.error("Error sending feedback reports:", err);
       showMessage("Something went wrong while generating the report.", "error");
     }
   };
@@ -305,7 +501,7 @@ const CreateFeedbackForm = () => {
                       <td className="px-6 py-4">{form.teacherName}</td>
                     </tr>
                   ))}
-                   {subforms.length === 0 && <tr><td colSpan="3" className="text-center py-6 text-gray-500">No teaching assignments found.</td></tr>}
+                    {subforms.length === 0 && <tr><td colSpan="3" className="text-center py-6 text-gray-500">No teaching assignments found.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -476,7 +672,7 @@ const CreateFeedbackForm = () => {
                       </td>
                     </tr>
                   ))}
-                   {paginatedStudents.length === 0 && <tr><td colSpan="3" className="text-center py-6 text-gray-500">No students match the current filter.</td></tr>}
+                    {paginatedStudents.length === 0 && <tr><td colSpan="3" className="text-center py-6 text-gray-500">No students match the current filter.</td></tr>}
                 </tbody>
               </table>
             </div>
