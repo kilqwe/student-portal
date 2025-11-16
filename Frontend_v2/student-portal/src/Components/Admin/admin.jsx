@@ -46,6 +46,25 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const mainContentRef = useRef(null);
 
+
+  function loadImageAsDataURL(url) {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+
   // Scroll to top when section OR teacher filters change
   useEffect(() => {
     if (mainContentRef.current) mainContentRef.current.scrollTo(0, 0);
@@ -148,24 +167,129 @@ export default function AdminDashboard() {
   const startIndex = (currentPage - 1) * studentsPerPage;
   const currentStudents = filteredStudents.slice(startIndex, startIndex + studentsPerPage);
 
-  const downloadAllStudentsAsPDF = () => {
-    const doc = new jsPDF();
-    doc.text("All Students", 14, 16);
+  
+
+ const downloadAllStudentsAsPDF = async () => {
+    // 1. Use landscape for more space
+    const doc = new jsPDF({ orientation: "landscape" });
+    const margin = 10;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const boxWidth = pageWidth - 2 * margin;
+
+    // 2. Add Logo
+    try {
+      const logoX = margin + 5;
+      const logoY = margin + 2;
+      const logoDataUrl = await loadImageAsDataURL("/RV_logo.jpg");
+      doc.addImage(logoDataUrl, "PNG", logoX, logoY, 20, 20);
+    } catch {
+      // Ignore if logo not loaded
+    }
+
+    // 3. Add College Header
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    const headerTextY = margin + 10;
+    doc.text(
+      "RV Institute of Technology and Management",
+      pageWidth / 2,
+      headerTextY,
+      { align: "center" }
+    );
+    const lineSpacing = 5;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      "Rashtriya Sikshana Samithi Trust",
+      pageWidth / 2,
+      headerTextY + lineSpacing,
+      { align: "center" }
+    );
+    doc.text(
+      "Department of Computer Science and Engineering",
+      pageWidth / 2,
+      headerTextY + 2 * lineSpacing,
+      { align: "center" }
+    );
+    doc.text(
+      "Bengaluru - 560076",
+      pageWidth / 2,
+      headerTextY + 3 * lineSpacing,
+      { align: "center" }
+    );
+
+    // 4. Add Header Line
+    const lastHeaderY = headerTextY + 3 * lineSpacing;
+    const lineMargin = margin + 5;
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineWidth(0.7);
+    doc.line(
+      lineMargin,
+      lastHeaderY + 4,
+      pageWidth - lineMargin,
+      lastHeaderY + 4
+    );
+
+    // 5. Add Report Title
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("STUDENT LIST", pageWidth / 2, 52, { align: "center" });
+
+    // 6. Define Table Content
+    const tableHead = [["Name", "USN", "Email", "Phone", "Parent Email", "Parent No", "Sem", "Sec"]];
+    const body = filteredStudents.map((s) => [
+      s.name,
+      s.id,
+      s.email,
+      s.phone || "N/A",
+      s.parentEmail || "N/A",
+      s.parentNo || "N/A",
+      s.semester,
+      s.section,
+    ]);
+
+    // 7. Define Column Widths & Calculate Centering
+    const columnStyles = {
+      0: { cellWidth: 40 }, // Name
+      1: { cellWidth: 30 }, // USN
+      2: { cellWidth: 50 }, // Email
+      3: { cellWidth: 30 }, // Phone
+      4: { cellWidth: 50 }, // Parent Email
+      5: { cellWidth: 30 }, // Parent No
+      6: { cellWidth: 20 }, // Sem
+      7: { cellWidth: 20 }, // Sec
+    };
+    const totalTableWidth = 40 + 30 + 50 + 30 + 50 + 30 + 20 + 20;
+    const newLeftMargin = (pageWidth - totalTableWidth) / 2;
+
+    // 8. Draw Table with All Styles
     autoTable(doc, {
-      startY: 20,
-      head: [["Name", "USN", "Email", "Phone", "Parent Email", "Parent No", "Semester", "Section"]],
-      body: filteredStudents.map((s) => [
-        s.name,
-        s.id,
-        s.email,
-        s.phone,
-        s.parentEmail || "",
-        s.parentNo || "",
-        s.semester,
-        s.section,
-      ]),
+      startY: 58, // Start below the title
+      head: tableHead,
+      body: body,
+      theme: "grid",
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: "bold",
+        halign: "center",
+        fontSize: 9,
+      },
+      bodyStyles: {
+        fontSize: 8, // Smaller font for more data
+        halign: "center",
+      },
+      columnStyles: columnStyles, // Apply fixed widths
+      margin: { left: newLeftMargin }, // Apply calculated margin to center
+      didDrawPage: function (data) {
+        // Add border to every page
+        doc.setDrawColor(180);
+        doc.setLineWidth(0.4);
+        doc.rect(margin, margin, boxWidth, doc.internal.pageSize.getHeight() - 2 * margin, "S");
+      },
     });
-    doc.save("students.pdf");
+
+    doc.save("student_list.pdf");
   };
 
   const handleLogout = async () => {
