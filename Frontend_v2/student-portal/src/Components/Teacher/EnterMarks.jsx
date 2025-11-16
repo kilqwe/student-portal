@@ -8,7 +8,6 @@ import autoTable from "jspdf-autotable";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import Pagination from "../helpers/Pagination";
-// <-- 1. IMPORT REMOVED
 
 export default function EnterMarks() {
   const [assignedSubjects, setAssignedSubjects] = useState([]);
@@ -24,16 +23,20 @@ export default function EnterMarks() {
   const [reducedMax, setReducedMax] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const studentsPerPage = 10;
+  // Logic from File 1: Includes totalInternals and reducedCIE for export logic
   const [fieldApplicability, setFieldApplicability] = useState({
     CIE1: true,
     CIE2: true,
     CIE3: true,
     assignmentMarks: true,
     labMarks: true,
+    totalInternals: true,
+    reducedCIE: true
   });
 
   const fileInputRef = useRef(null);
 
+  // Logic from File 1: More robust safeInt
   function safeInt(value) {
     if (value === null || value === undefined || value === "" || value === "N/A") return 0;
     const n = parseInt(value, 10);
@@ -45,9 +48,9 @@ export default function EnterMarks() {
   });
   const [subjectDetails, setSubjectDetails] = useState({});
 
+  // UI logic from File 2
   useEffect(() => {
     if (submitStatus) {
-      // Keep the timer, but only clear success/error messages, not the loading one
       if (submitStatus !== "Saving marks...") {
         const timer = setTimeout(() => setSubmitStatus(null), 4000);
         return () => clearTimeout(timer);
@@ -55,6 +58,7 @@ export default function EnterMarks() {
     }
   }, [submitStatus]);
   
+  // UI logic from File 2 (combines File 1's two useEffects)
   useEffect(() => {
     const fetchInitialData = async () => {
         const user = auth.currentUser;
@@ -89,46 +93,59 @@ export default function EnterMarks() {
     fetchInitialData();
   }, []);
 
+  // Logic from File 1
   const exportToExcel = () => {
     if (!selectedSubject || students.length === 0) return;
 
+    // Prepare data for excel
     const headers = [
-      "slno.", "USN", "Name",
+      "slno.",
+      "USN",
+      "Name",
       ...(fieldApplicability.CIE1 ? ["CIE1"] : []),
       ...(fieldApplicability.CIE2 ? ["CIE2"] : []),
       ...(fieldApplicability.CIE3 ? ["CIE3"] : []),
-      ["Reduced CIE"],
+      ...(fieldApplicability.reducedCIE ? ["Reduced CIE"] : []),
       ...(fieldApplicability.assignmentMarks ? ["Assignment"] : []),
       ...(fieldApplicability.labMarks ? ["Lab Marks"] : []),
-      ["Total Internals"],
+      ...(fieldApplicability.totalInternals ? ["Total Internals"] : []),
     ];
 
     const data = students.map((student, index) => {
-        const entry = marksData[student.id] || {};
-        return [
-          index + 1, student.id, student.name,
-          ...(fieldApplicability.CIE1 ? [entry.CIE1 ?? ""] : []),
-          ...(fieldApplicability.CIE2 ? [entry.CIE2 ?? ""] : []),
-          ...(fieldApplicability.CIE3 ? [entry.CIE3 ?? ""] : []),
-          [entry.reducedCIE ?? ""],
-          ...(fieldApplicability.assignmentMarks ? [entry.assignmentMarks ?? ""] : []),
-          ...(fieldApplicability.labMarks ? [entry.labMarks ?? ""] : []),
-          [entry.totalInternals ?? ""],
-        ];
+      const entry = marksData[student.id] || {};
+      return [
+        index + 1,
+        student.id,
+        student.name,
+        ...(fieldApplicability.CIE1 ? [entry.CIE1 ?? ""] : []),
+        ...(fieldApplicability.CIE2 ? [entry.CIE2 ?? ""] : []),
+        ...(fieldApplicability.CIE3 ? [entry.CIE3 ?? ""] : []),
+        ...(fieldApplicability.reducedCIE ? [entry.reducedCIE ?? ""] : []),
+        ...(fieldApplicability.assignmentMarks ? [entry.assignmentMarks ?? ""] : []),
+        ...(fieldApplicability.labMarks ? [entry.labMarks ?? ""] : []),
+        ...(fieldApplicability.totalInternals ? [entry.totalInternals ?? ""] : []),
+      ];
     });
-    
+
+    // Combine header and data
     const worksheetData = [headers, ...data];
+
+    // Create worksheet and workbook
     const ws = XLSX.utils.aoa_to_sheet(worksheetData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+    // Save file
     const fileName = `MarksGradeReport_${selectedSubject.subject}_${selectedSubject.section}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
+  // UI logic from File 2
   const handleImportClick = () => {
     fileInputRef.current.click();
   };
 
+  // UI logic from File 2
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -205,15 +222,17 @@ export default function EnterMarks() {
     e.target.value = null;
   };
 
+  // Logic from File 1
   function loadImageAsDataURL(url) {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
       img.crossOrigin = "anonymous";
       img.onload = function () {
         const canvas = document.createElement("canvas");
-        canvas.width = this.naturalWidth;
-        canvas.height = this.naturalHeight;
-        canvas.getContext("2d").drawImage(this, 0, 0);
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       };
       img.onerror = reject;
@@ -221,30 +240,176 @@ export default function EnterMarks() {
     });
   }
 
+  // --- MODIFIED PDF FUNCTION ---
   const downloadReportAsPDF = async () => {
     if (!selectedSubject || students.length === 0) return;
-    const doc = new jsPDF();
-    // ... PDF generation logic remains unchanged ...
+
+    // 1. Set orientation to landscape
+    const doc = new jsPDF({ orientation: "landscape" });
+    const margin = 10;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const boxWidth = pageWidth - 2 * margin;
+
+    // 2. Border drawing logic is REMOVED from here and put in didDrawPage
+
+    try {
+      const logoX = margin + 5;
+      const logoY = margin + 2;
+      const logoDataUrl = await loadImageAsDataURL("/RV_logo.jpg");
+      doc.addImage(logoDataUrl, "PNG", logoX, logoY, 20, 20);
+    } catch {
+      // Ignore if logo not loaded
+    }
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+
+    const headerTextY = margin + 10;
+    doc.text(
+      "RV Institute of Technology and Management",
+      pageWidth / 2,
+      headerTextY,
+      { align: "center" }
+    );
+    const lineSpacing = 5;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+
+    doc.text(
+      "Rashtriya Sikshana Samithi Trust",
+      pageWidth / 2,
+      headerTextY + lineSpacing,
+      { align: "center" }
+    );
+    doc.text(
+      "Department of Computer Science and Engineering",
+      pageWidth / 2,
+      headerTextY + 2 * lineSpacing,
+      { align: "center" }
+    );
+    doc.text(
+      "Bengaluru - 560076",
+      pageWidth / 2,
+      headerTextY + 3 * lineSpacing,
+      { align: "center" }
+    );
+
+    const lastHeaderY = headerTextY + 3 * lineSpacing;
+    const lineMargin = margin + 5;
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineWidth(0.7);
+    doc.line(
+      lineMargin,
+      lastHeaderY + 4,
+      pageWidth - lineMargin,
+      lastHeaderY + 4
+    );
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("MARKS GRADE REPORT", pageWidth / 2, 52, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    
+    // 3. Use subjectDetails state (more efficient)
+    doc.setFontSize(10);
+    const subjectName = subjectDetails[selectedSubject.subject] || "";
+    const infoRow = `Subject: ${subjectName || ""} (${selectedSubject.subject})   Semester: ${selectedSubject.semester}   Section: ${selectedSubject.section}`;
+    doc.text(infoRow, pageWidth / 2, margin + 48, { align: "center" });
+
+    const tableHead = [
+      [
+        "slno.",
+        "USN",
+        "Name",
+        ...(fieldApplicability.CIE1 ? ["CIE1"] : []),
+        ...(fieldApplicability.CIE2 ? ["CIE2"] : []),
+        ...(fieldApplicability.CIE3 ? ["CIE3"] : []),
+        ...(fieldApplicability.reducedCIE ? ["Reduced CIE"] : []),
+        ...(fieldApplicability.assignmentMarks ? ["Assignment"] : []),
+        ...(fieldApplicability.labMarks ? ["Lab Marks"] : []),
+        ...(fieldApplicability.totalInternals ? ["Total Internals"] : []),
+      ]
+    ];
+
+    const tableRows = students.map((student, index) => {
+      const entry = marksData[student.id] || {};
+      return [
+        index + 1,
+        student.id,
+        student.name,
+        ...(fieldApplicability.CIE1 ? [entry.CIE1 ?? ""] : []),
+        ...(fieldApplicability.CIE2 ? [entry.CIE2 ?? ""] : []),
+        ...(fieldApplicability.CIE3 ? [entry.CIE3 ?? ""] : []),
+        ...(fieldApplicability.reducedCIE ? [entry.reducedCIE ?? ""] : []),
+        ...(fieldApplicability.assignmentMarks ? [entry.assignmentMarks ?? ""] : []),
+        ...(fieldApplicability.labMarks ? [entry.labMarks ?? ""] : []),
+        ...(fieldApplicability.totalInternals ? [entry.totalInternals ?? ""] : []),
+      ];
+    });
+
+    // 4. Define dynamic column styles
+    const columnStyles = {
+      0: { cellWidth: 15 }, // slno.
+      1: { cellWidth: 35 }, // USN
+      2: { cellWidth: 55 }, // Name
+    };
+
+    // 5. Add all updates to autoTable call
+    autoTable(doc, {
+      startY: 65,
+      head: tableHead,
+      body: tableRows,
+      theme: "grid",
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: "bold",
+        halign: "center",
+        fontSize: 9, // Set font size
+      },
+      bodyStyles: {
+        fontSize: 9, // Set font size
+        halign: "center"
+      },
+      columnStyles: columnStyles, // Use dynamic styles
+      margin: { left: 12, right: 12 }, // Set margin
+      didDrawPage: function (data) { // Add border to every page
+        doc.setDrawColor(180);
+        doc.setLineWidth(0.4);
+        doc.rect(margin, margin, boxWidth, doc.internal.pageSize.getHeight() - 2 * margin, "S");
+      }
+    });
+    const fileName = `MarksGradeReport_${selectedSubject.subject}_${selectedSubject.section}.pdf`;
+    doc.save(fileName);
   };
 
+  // Logic from File 1
   const handleSubjectSelect = async (subject) => {
     setSelectedSubject(subject);
     setSubmitStatus(null);
     setIsMaxMarksSaved(false);
-    setCurrentPage(1);
-
-    const q = query(collection(db, "students"), where("semester", "==", subject.semester), where("section", "==", subject.section));
+    setCurrentPage(1); // Reset page on new subject
+  
+    const q = query(
+      collection(db, "students"),
+      where("semester", "==", Number(subject.semester)),
+      where("section", "==", subject.section)
+    );
     const snapshot = await getDocs(q);
-    const studentsList = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const studentsList = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     setStudents(studentsList);
-
+  
     const newMarksData = {};
     for (const student of studentsList) {
       const docId = `${student.id}_${subject.subject.trim()}`;
       const docRef = doc(db, "marks", docId);
       const docSnap = await getDoc(docRef);
-      newMarksData[student.id] = docSnap.exists() ? {
-          CIE1: docSnap.data().cieMarks?.CIE1,
+      newMarksData[student.id] = docSnap.exists()
+        ? {
+          CIE1: docSnap.data().cieMarks?.CIE1, // Keep as-is (could be "", null, N/A, or number)
           CIE2: docSnap.data().cieMarks?.CIE2,
           CIE3: docSnap.data().cieMarks?.CIE3,
           assignmentMarks: docSnap.data().assignmentMarks,
@@ -252,34 +417,65 @@ export default function EnterMarks() {
           reducedCIE: docSnap.data().reducedCIE,
           totalInternals: docSnap.data().totalInternals,
           maxMarks: docSnap.data().maxMarks ?? {},
-        } : { CIE1: "", CIE2: "", CIE3: "", assignmentMarks: "", labMarks: "", reducedCIE: "", totalInternals: "", maxMarks: {} };
+        }
+        : {
+          CIE1: "",
+          CIE2: "",
+          CIE3: "",
+          assignmentMarks: "",
+          labMarks: "",
+          reducedCIE: "",
+          totalInternals: "",
+          maxMarks: {},
+        };
     }
     setMarksData(newMarksData);
+    // Use first student's data to populate max marks, or empty if no students
     const firstStudentId = studentsList[0]?.id;
     if (firstStudentId && newMarksData[firstStudentId]) {
-        setMaxMarks(newMarksData[firstStudentId].maxMarks || {});
+      setMaxMarks(newMarksData[firstStudentId].maxMarks || {});
+      setReducedMax(newMarksData[firstStudentId].reducedMax ?? ""); // Load reducedMax
     } else {
-        setMaxMarks({ CIE1: "", CIE2: "", CIE3: "", assignmentMarks: "", labMarks: "" });
+      setMaxMarks({ CIE1: "", CIE2: "", CIE3: "", assignmentMarks: "", labMarks: "" });
+      setReducedMax("");
     }
     setOriginalMarksData(JSON.parse(JSON.stringify(newMarksData)));
   };
-
+  
+  // Logic from File 1
   const handleMarkChange = (studentId, field, value) => {
     let rawVal = value === "" || value === "N/A" ? "" : value;
+  
+    // Parse the entered value as integer
     let valInt = parseInt(rawVal, 10);
+  
+    // Retrieve max allowed marks for this field
     const maxAllowed = maxMarks[field];
-
-    if (maxAllowed !== "" && maxAllowed !== undefined && !isNaN(maxAllowed) && !isNaN(valInt) && valInt > maxAllowed) {
-      alert(`Marks (${valInt}) cannot exceed max marks (${maxAllowed}) for ${field}.`);
+  
+    // If max marks is defined and number, and entered value exceeds it
+    if (
+      maxAllowed !== "" &&
+      maxAllowed !== undefined &&
+      !isNaN(maxAllowed) &&
+      !isNaN(valInt) &&
+      valInt > maxAllowed
+    ) {
+      alert(`Marks entered (${valInt}) cannot be more than the maximum allowed (${maxAllowed}) for ${field}.`);
+      // Do NOT update the state with invalid value; just return early.
       return;
     }
-
+  
+    // If value is empty or "N/A" or a valid number less than or equal maxAllowed, update state
     setMarksData((prev) => ({
       ...prev,
-      [studentId]: { ...prev[studentId], [field]: isNaN(valInt) ? "" : valInt },
+      [studentId]: {
+        ...prev[studentId],
+        [field]: valInt === undefined || isNaN(valInt) ? "" : valInt,
+      },
     }));
   };
 
+  // Logic from File 1 (with max mark check from File 2)
   const handleFillAll = (field, value) => {
     const val = value === "" ? "" : parseInt(value, 10);
     if (!isNaN(val) && maxMarks[field] && val > maxMarks[field]) {
@@ -295,113 +491,148 @@ export default function EnterMarks() {
       return updated;
     });
   };
-  
+
+  // Logic from File 1
   const toggleFieldApplicability = (field) => {
     const isActive = fieldApplicability[field];
     setFieldApplicability((prev) => ({ ...prev, [field]: !isActive }));
     setMarksData((prev) => {
       const updated = { ...prev };
       for (const studentId of Object.keys(updated)) {
-          if(!updated[studentId]) updated[studentId] = {};
-          updated[studentId][field] = isActive ? "N/A" : originalMarksData[studentId]?.[field] ?? "";
+        if(!updated[studentId]) updated[studentId] = {}; // Ensure student object exists
+        updated[studentId][field] = isActive ? "N/A" : originalMarksData[studentId]?.[field] ?? 0;
       }
       return updated;
     });
   };
 
+  // Logic from File 1, adapted for File 2's setSubmitStatus
   const saveMaxMarksToFirestore = async () => {
-    const applicableFields = ["CIE1", "CIE2", "CIE3", "labMarks", "assignmentMarks"].filter((field) => fieldApplicability[field]);
-    const allFilled = applicableFields.every((field) => maxMarks[field] !== "" && !isNaN(maxMarks[field]));
+    const applicableFields = ["CIE1", "CIE2", "CIE3", "labMarks", "assignmentMarks"].filter(
+      (field) => fieldApplicability[field]
+    );
+  
+    const allFilled = applicableFields.every(
+      (field) => maxMarks[field] !== undefined && maxMarks[field] !== "" && !isNaN(maxMarks[field])
+    );
     const isReducedMaxValid = reducedMax !== "" && !isNaN(reducedMax);
-
+  
     if (!allFilled || !isReducedMaxValid) {
-      alert("Please enter valid numbers for all applicable max marks fields and for the Reduced CIE max marks before saving.");
+      alert("Please enter max marks for all applicable fields and reduced CIE max marks before saving.");
       return;
     }
-
+  
     try {
       for (const student of students) {
         const docId = `${student.id}_${selectedSubject.subject.trim()}`;
         const docRef = doc(db, "marks", docId);
-        await setDoc(docRef, {
-            maxMarks: Object.fromEntries(Object.entries(maxMarks).map(([k, v]) => [k, v === "" ? "" : parseInt(v, 10)])),
+  
+        await setDoc(
+          docRef,
+          {
+            maxMarks: Object.fromEntries(
+              Object.entries(maxMarks)
+                .map(([k, v]) => [k, v === "" ? "" : parseInt(v, 10)])
+            ),
             reducedMax: parseInt(reducedMax, 10),
-          }, { merge: true });
+          },
+          { merge: true }
+        );
       }
-      setSubmitStatus("Max marks saved successfully!");
+  
+      setSubmitStatus("Max marks saved successfully!"); // Use setSubmitStatus
       setIsMaxMarksSaved(true);
     } catch (error) {
       console.error("Error saving max marks:", error);
-      setSubmitStatus("Failed to save max marks.");
+      setSubmitStatus("Failed to save max marks."); // Use setSubmitStatus
     }
   };
 
+  // Logic from File 1
   const handleSubmit = async () => {
     if (!selectedSubject) return;
-    setSubmitStatus("Saving marks...");
+    setSubmitStatus("Saving marks..."); // Use setSubmitStatus
     try {
       const reducedMaxInt = safeInt(reducedMax);
+  
       for (const student of students) {
         const markEntry = marksData[student.id] || {};
         const docId = `${student.id}_${selectedSubject.subject.trim()}`;
         const docRef = doc(db, "marks", docId);
-        
-        const cieKeys = ["CIE1", "CIE2", "CIE3"].filter((k) => fieldApplicability[k]);
+        const updatePayload = {};
+  
+        const cieKeys = ["CIE1", "CIE2", "CIE3"].filter(k => fieldApplicability[k]);
         const cieMarks = {};
-        cieKeys.forEach((key) => { cieMarks[key] = safeInt(markEntry[key]); });
-        
+        cieKeys.forEach((key) => {
+          cieMarks[key] = safeInt(markEntry[key]);
+        });
+        updatePayload.cieMarks = cieMarks;
+  
         const assignmentVal = fieldApplicability.assignmentMarks ? safeInt(markEntry.assignmentMarks) : 0;
         const labVal = fieldApplicability.labMarks ? safeInt(markEntry.labMarks) : 0;
-        
+        updatePayload.assignmentMarks = fieldApplicability.assignmentMarks ? assignmentVal : "N/A";
+        updatePayload.labMarks = fieldApplicability.labMarks ? labVal : "N/A";
+  
         const cieTotal = cieKeys.reduce((sum, key) => sum + cieMarks[key], 0);
         const cieMax = cieKeys.reduce((sum, key) => sum + safeInt(maxMarks[key]), 0);
-        
-        const reducedCIE = cieMax > 0 && reducedMaxInt > 0 ? (cieTotal / cieMax) * reducedMaxInt : 0;
+        const reducedCIE = (cieMax && reducedMaxInt) ? (cieTotal / cieMax) * reducedMaxInt : 0;
+        updatePayload.reducedCIE = Math.round(reducedCIE);
         const totalInternals = Math.round(reducedCIE + assignmentVal + labVal);
+        updatePayload.totalInternals = totalInternals;
+  
+        updatePayload.maxMarks = Object.fromEntries(
+          Object.entries(maxMarks).map(([k, v]) => [k, v === "" ? "" : safeInt(v)])
+        );
 
-        const updatePayload = {
-            cieMarks: cieMarks,
-            assignmentMarks: fieldApplicability.assignmentMarks ? assignmentVal : "N/A",
-            labMarks: fieldApplicability.labMarks ? labVal : "N/A",
-            reducedCIE: Math.round(reducedCIE),
-            totalInternals: totalInternals,
+        // Add reducedMax to the payload
+        updatePayload.reducedMax = reducedMaxInt;
+  
+        await setDoc(
+          docRef,
+          {
+            ...updatePayload,
             rollNo: student.id,
             semester: selectedSubject.semester,
             subjectCode: selectedSubject.subject.trim(),
-        };
-
-        await setDoc(docRef, updatePayload, { merge: true });
-
+          },
+          { merge: true }
+        );
         setMarksData((prev) => ({
           ...prev,
           [student.id]: {
             ...prev[student.id],
             reducedCIE: Math.round(reducedCIE),
             totalInternals: totalInternals,
-          },
+          }
         }));
+  
       }
+  
       setSubmitStatus("Marks updated successfully!");
     } catch (err) {
       console.error("Error updating marks:", err);
-      setSubmitStatus("Error updating marks. Please try again.");
+      setSubmitStatus("Error updating marks. Try again.");
     }
   };
 
+  // UI logic from File 2
   const filteredStudents = students.filter(
     (student) =>
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
+  // UI logic from File 2
   const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
   const startIndex = (currentPage - 1) * studentsPerPage;
   const currentStudents = filteredStudents.slice(startIndex, startIndex + studentsPerPage);
 
+  // UI logic from File 2
   const visibleFields = [
     "CIE1", "CIE2", "CIE3", "labMarks", "assignmentMarks"
   ].filter(field => fieldApplicability[field]);
 
+  // UI logic from File 2
   const handleKeyDown = (e, studentIndex, currentField) => {
     const { key } = e;
     if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) {
@@ -444,6 +675,7 @@ export default function EnterMarks() {
     }
   };
   
+  // UI logic from File 2
   const handleMaxMarksKeyDown = (e, currentField) => {
     const { key } = e;
     if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) {
@@ -488,6 +720,7 @@ export default function EnterMarks() {
     }
   };
 
+  // UI from File 2
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
         <input 
@@ -570,7 +803,7 @@ export default function EnterMarks() {
                                         onKeyDown={(e) => handleMaxMarksKeyDown(e, "reducedMax")}
                                         value={reducedMax} 
                                         onChange={(e) => { setReducedMax(e.target.value); setIsMaxMarksSaved(false); }} 
-                                        placeholder="e.g. 50" 
+                                        placeholder="e.g. 25" 
                                         className="w-full border border-gray-300 p-2 rounded text-sm" 
                                     />
                                 </div>
@@ -705,7 +938,6 @@ export default function EnterMarks() {
                             {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />}
                         </div>
                         
-                        {/* --- 2. MODIFIED STATUS BLOCK --- */}
                         {submitStatus && (
                           <div className="flex justify-center items-center mt-4">
                             {submitStatus === "Saving marks..." ? (

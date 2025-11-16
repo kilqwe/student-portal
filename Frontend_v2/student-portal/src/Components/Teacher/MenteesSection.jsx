@@ -121,26 +121,28 @@ export default function MenteesSection({ mentees }) {
   const generatePDF = async (usn) => {
     setPdfLoadingId(usn);
     try {
+      // Fetch subjects
       const subjectsSnapshot = await getDocs(collection(db, "subjects"));
       const freshSubjectsData = {};
       const subjectNameMap = {};
-      subjectsSnapshot.forEach((doc) => {
-        const data = doc.data();
-        const id = cleanCode(doc.id);
+      subjectsSnapshot.forEach((d) => {
+        const data = d.data();
+        const id = cleanCode(d.id);
         freshSubjectsData[id] = { name: data.name, credits: data.credit };
         subjectNameMap[id] = data.name;
       });
 
+      // Fetch student
       const studentRef = doc(db, "students", usn);
       const studentSnap = await getDoc(studentRef);
       if (!studentSnap.exists()) {
         alert("Student data not found.");
-        setPdfLoadingId(null);
         return;
       }
       const studentData = studentSnap.data();
       const currentSem = Number(studentData.semester || 0);
 
+      // Fetch marks
       const marksQuery = query(collection(db, "marks"), where("rollNo", "==", usn));
       const marksSnap = await getDocs(marksQuery);
       const semMap = {};
@@ -162,43 +164,125 @@ export default function MenteesSection({ mentees }) {
       const allMarks = Object.values(semMap).flat();
       const cgpa = calculateCGPA(allMarks, freshSubjectsData);
 
+      // PDF setup
       const docPdf = new jsPDF();
       let currentY = 10;
       const margin = 10;
       const pageWidth = docPdf.internal.pageSize.getWidth();
+      const pageHeight = docPdf.internal.pageSize.getHeight();
+      const boxWidth = pageWidth - 2 * margin;
+      const boxHeight = pageHeight - 2 * margin;
 
-      // Header
+      // Try to add logo
       try {
         const logoDataUrl = await loadImageAsDataURL("/RV_logo.jpg");
         docPdf.addImage(logoDataUrl, "PNG", pageWidth / 2 - 10, currentY + 2, 20, 20);
       } catch {}
+
       docPdf.setFontSize(13).setFont("helvetica", "bold").text("RV Institute of Technology and Management", pageWidth / 2, currentY + 26, { align: "center" });
       docPdf.setFontSize(10).setFont("helvetica", "normal").text("Department of Computer Science and Engineering", pageWidth / 2, currentY + 31, { align: "center" });
       currentY += 48;
       docPdf.setFontSize(15).setFont("helvetica", "bold").text("Student Academic Report", pageWidth / 2, currentY, { align: "center" });
 
-      // Student Info
+      // Student info
       currentY += 10;
       docPdf.setFontSize(11).setFont("helvetica", "normal");
       docPdf.text(`Name: ${studentData.name || ""}`, margin + 2, (currentY += 8));
       docPdf.text(`USN: ${usn}`, pageWidth / 2 + 5, currentY);
       docPdf.text(`Semester: ${studentData.semester || ""}`, margin + 2, (currentY += 7));
       docPdf.text(`Section: ${studentData.section || ""}`, pageWidth / 2 + 5, currentY);
+      docPdf.text(`Email: ${studentData.email || ""}`, margin + 2, (currentY += 7));
+      docPdf.text(`Phone: ${studentData.phone || ""}`, pageWidth / 2 + 5, currentY);
+      docPdf.text(`Parent Email: ${studentData.parentEmail || ""}`, margin + 2, (currentY += 7));
+      docPdf.text(`Parent Phone: ${studentData.parentNo || ""}`, pageWidth / 2 + 5, currentY);
       docPdf.setFont("helvetica", "bold").text(`CGPA (Current Sem): ${cgpa}`, margin + 2, (currentY += 7));
 
+      // Draw border on first page
+      docPdf.setDrawColor(180);
+      docPdf.setLineWidth(0.4);
+      docPdf.rect(margin, margin, boxWidth, boxHeight, "S");
+
       currentY += 8;
-      // Marks Tables
+
+      // Marks tables per semester
       for (const sem of Object.keys(semMap).map(Number).sort((a, b) => a - b)) {
         const subjects = semMap[sem];
         const sgpa = calculateSGPA(subjects, freshSubjectsData);
+
+        // rough table height check
+        const tableHeight = (subjects.length + 1) * 8 + 15;
+        if (currentY + tableHeight > pageHeight - margin) {
+          docPdf.addPage();
+          currentY = 20;
+        }
+
         docPdf.setFontSize(13).text(`Semester ${sem} - SGPA: ${sgpa}`, margin + 2, (currentY += 9));
+
         autoTable(docPdf, {
           startY: currentY + 2,
           head: [["Code", "Subject", "Internals", "SEE", "Total"]],
           body: subjects.map((s) => [s.subjectCode, subjectNameMap[s.subjectCode] || "N/A", s.internals, s.see, s.total]),
           theme: "grid",
+
+          headStyles: {
+            fillColor: [41, 128, 185], 
+            textColor: 255, 
+            fontStyle: 'bold',
+            halign: 'center'
+          },
+          bodyStyles: {
+            halign: 'center'
+          },
+          didDrawPage: function () {
+            docPdf.setDrawColor(180);
+            docPdf.setLineWidth(0.4);
+            docPdf.rect(margin, margin, boxWidth, boxHeight, "S");
+          },
         });
-        currentY = docPdf.lastAutoTable.finalY;
+
+        currentY = docPdf.lastAutoTable ? docPdf.lastAutoTable.finalY : currentY;
+      }
+
+      // Achievements Section in PDF
+      const achievements = studentData.achievements;
+
+      // Check if we need a new page for the achievements header
+      if (currentY + 30 > pageHeight - margin) {
+          docPdf.addPage();
+          currentY = 20;
+      } else {
+          currentY += 10;
+      }
+
+      // Always print the Header
+      docPdf.setFontSize(13).setFont("helvetica", "bold").setTextColor(0, 0, 0).text("Achievements", margin + 2, currentY);
+      currentY += 6;
+
+      if (Array.isArray(achievements) && achievements.length > 0) {
+        docPdf.setFont("helvetica", "normal");
+        docPdf.setFontSize(11);
+        
+        achievements.forEach((item) => {
+          // Ensure we have a string to display
+          const text = typeof item === 'string' ? item : (item.title || item.name || JSON.stringify(item));
+          const wrapped = docPdf.splitTextToSize(`• ${text}`, pageWidth - 2 * margin - 4);
+          
+          // Check if this specific item fits, if not add page
+          if (currentY + (wrapped.length * 6) > pageHeight - margin) {
+            docPdf.addPage();
+            currentY = 20;
+            docPdf.setFontSize(13).setFont("helvetica", "bold").text("Achievements (cont.)", margin + 2, currentY);
+            docPdf.setFont("helvetica", "normal").setFontSize(11);
+            currentY += 10;
+          }
+
+          docPdf.text(wrapped, margin + 4, (currentY += 7));
+          currentY += wrapped.length > 1 ? (wrapped.length - 1) * 5 : 0;
+        });
+      } else {
+        // Render Placeholder Text if no achievements
+        docPdf.setFontSize(11).setFont("helvetica", "italic").setTextColor(100);
+        docPdf.text("Students' Recent Achievements and Certifications will appear here", margin + 2, currentY + 5);
       }
 
       docPdf.save(`${usn}_Academic_Report.pdf`);
@@ -263,8 +347,9 @@ export default function MenteesSection({ mentees }) {
                                 <th scope="col" className="px-6 py-3">#</th>
                                 <th scope="col" className="px-6 py-3">Name</th>
                                 <th scope="col" className="px-6 py-3">USN</th>
-                                <th scope="col" className="px-6 py-3">Semester</th>
-                                <th scope="col" className="px-6 py-3 text-center">Academic Report</th>
+                                <th scope="col" className="px-6 py-3 text-center">Semester</th>
+                                {/* RIGHT ALIGN HEADER */}
+                                <th scope="col" className="px-6 py-3 text-right">Academic Report</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -273,12 +358,14 @@ export default function MenteesSection({ mentees }) {
                                     <td className="px-6 py-4 font-medium text-gray-500">{indexOfFirst + index + 1}</td>
                                     <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{s.name || "N/A"}</td>
                                     <td className="px-6 py-4">{s.id || "N/A"}</td>
-                                    <td className="px-6 py-4">{s.semester || "N/A"}</td>
-                                    <td className="px-6 py-4 text-center">
+                                    <td className="px-6 py-4 text-center">{s.semester || "N/A"}</td>
+                                    {/* RIGHT ALIGN BUTTON CELL */}
+                                    <td className="px-6 py-4 text-right">
                                         <button
                                             onClick={() => generatePDF(s.id)}
                                             disabled={pdfLoadingId === s.id}
-                                            className="px-4 py-2 rounded-md bg-blue-600 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 w-32 disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700"
+                                            // Added inline-flex to work better with text-right and ml-auto behavior if needed
+                                            className="px-4 py-2 rounded-md bg-blue-600 text-white text-xs font-bold transition-colors inline-flex items-center justify-center gap-2 w-32 disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700"
                                         >
                                             {pdfLoadingId === s.id ? (
                                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

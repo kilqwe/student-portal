@@ -365,13 +365,13 @@ export default function EnterAttendance() {
         tableLineWidth: 0.05,
         tableLineColor: [160, 160, 160],
       });
-      docu.save(`AttendanceReport_${selectedSubject.subject}_${Date.now()}.pdf`);
+      docu.save(`AttendanceReport_${selectedSubject.subject}}.pdf`);
     } catch (err) {
       console.error("Error generating report:", err);
       showMessage("Failed to generate report.", "error");
     }
   };
-  // --- END: PDF Export Logic ---
+  
 
   const handleSubjectSelect = async (subject) => {
     if (!subject) return;
@@ -418,7 +418,7 @@ export default function EnterAttendance() {
 
     try {
       showMessage("Saving attendance...", "info", null); // Non-disappearing message
-      const docId = `${selectedSubject.subject}_${fromDate}_${toDate}_${Date.now()}`;
+      const docId = `${selectedSubject.subject}_${fromDate}_${toDate}}`;
       await setDoc(doc(db, "attendance", docId), {
         subjectCode: selectedSubject.subject,
         semester: Number(selectedSubject.semester),
